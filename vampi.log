@@ -1,5 +1,20 @@
 [
   {
+    "type": "CREDENTIAL_EXPOSURE",
+    "severity": "CRITICAL",
+    "detail": "Exposed credentials through debug endpoint",
+    "evidence": {
+      "url": "http://localhost:5002/users/v1/_debug",
+      "user_count": 3,
+      "sample": {
+        "admin": false,
+        "email": "mail1@mail.com",
+        "password": "pass1",
+        "username": "name1"
+      }
+    }
+  },
+  {
     "type": "SQL_INJECTION",
     "severity": "HIGH",
     "detail": "Potential Boolean-based SQL Injection detected",
@@ -10,7 +25,7 @@
       "response": "{ \"message\": \"VAmPI the Vulnerable API\", \"help\": \"VAmPI is a vulnerable on purpose API. It was created in order to evaluate the efficiency of third party tools in identifying vulnerabilities in APIs but it can also be used in learning/teaching purposes.\", \"vulnerable\":1}",
       "headers": {
         "Server": "Werkzeug/2.2.3 Python/3.11.11",
-        "Date": "Wed, 26 Feb 2025 12:16:52 GMT",
+        "Date": "Thu, 27 Feb 2025 03:07:19 GMT",
         "Content-Type": "application/json",
         "Content-Length": "271",
         "Connection": "close"
@@ -28,7 +43,7 @@
       "response": "{ \"message\": \"VAmPI the Vulnerable API\", \"help\": \"VAmPI is a vulnerable on purpose API. It was created in order to evaluate the efficiency of third party tools in identifying vulnerabilities in APIs but it can also be used in learning/teaching purposes.\", \"vulnerable\":1}",
       "headers": {
         "Server": "Werkzeug/2.2.3 Python/3.11.11",
-        "Date": "Wed, 26 Feb 2025 12:16:52 GMT",
+        "Date": "Thu, 27 Feb 2025 03:07:19 GMT",
         "Content-Type": "application/json",
         "Content-Length": "271",
         "Connection": "close"
@@ -46,7 +61,7 @@
       "response": "{ \"message\": \"VAmPI the Vulnerable API\", \"help\": \"VAmPI is a vulnerable on purpose API. It was created in order to evaluate the efficiency of third party tools in identifying vulnerabilities in APIs but it can also be used in learning/teaching purposes.\", \"vulnerable\":1}",
       "headers": {
         "Server": "Werkzeug/2.2.3 Python/3.11.11",
-        "Date": "Wed, 26 Feb 2025 12:16:52 GMT",
+        "Date": "Thu, 27 Feb 2025 03:07:19 GMT",
         "Content-Type": "application/json",
         "Content-Length": "271",
         "Connection": "close"
@@ -64,7 +79,7 @@
       "response": "{ \"message\": \"VAmPI the Vulnerable API\", \"help\": \"VAmPI is a vulnerable on purpose API. It was created in order to evaluate the efficiency of third party tools in identifying vulnerabilities in APIs but it can also be used in learning/teaching purposes.\", \"vulnerable\":1}",
       "headers": {
         "Server": "Werkzeug/2.2.3 Python/3.11.11",
-        "Date": "Wed, 26 Feb 2025 12:16:52 GMT",
+        "Date": "Thu, 27 Feb 2025 03:07:19 GMT",
         "Content-Type": "application/json",
         "Content-Length": "271",
         "Connection": "close"
@@ -84,185 +99,44 @@
     }
   },
   {
-    "type": "EXCESSIVE_DATA_EXPOSURE",
+    "type": "MASS_ASSIGNMENT",
     "severity": "HIGH",
-    "detail": "Endpoint /users/v1/_debug exposes sensitive data",
+    "detail": "Successfully created admin user through mass assignment",
     "evidence": {
-      "url": "http://localhost:5002//users/v1/_debug",
-      "exposed_data_types": [
-        "password",
-        "admin_status",
-        "email",
-        "username"
-      ],
-      "response_sample": "{'users': [{'admin': False, 'email': 'mail1@mail.com', 'password': 'pass1', 'username': 'name1'}, {'admin': False, 'email': 'mail2@mail.com', 'password': 'pass2', 'username': 'name2'}, {'admin': True,"
-    }
-  },
-  {
-    "type": "EXCESSIVE_DATA_EXPOSURE",
-    "severity": "HIGH",
-    "detail": "Endpoint /users/v1 exposes sensitive data",
-    "evidence": {
-      "url": "http://localhost:5002//users/v1",
-      "exposed_data_types": [
-        "email",
-        "username"
-      ],
-      "response_sample": "{'users': [{'email': 'mail1@mail.com', 'username': 'name1'}, {'email': 'mail2@mail.com', 'username': 'name2'}, {'email': 'admin@mail.com', 'username': 'admin'}]}"
-    }
-  },
-  {
-    "type": "USER_ENUMERATION",
-    "severity": "MEDIUM",
-    "detail": "Different error message for existing username: admin",
-    "evidence": {
-      "url": "http://localhost:5002//users/v1/login",
-      "username": "admin",
-      "response": "{ \"status\": \"fail\", \"message\": \"Password is not correct for the given username.\"}"
-    }
-  },
-  {
-    "type": "RATE_LIMIT_MISSING",
-    "severity": "HIGH",
-    "detail": "No rate limiting detected after 50 rapid requests",
-    "evidence": {
-      "url": "http://localhost:5002//books/v1",
-      "request_count": 50,
-      "status_codes": [
-        200,
-        200,
-        200,
-        200,
-        200,
-        200,
-        200,
-        200,
-        200,
-        200,
-        200,
-        200,
-        200,
-        200,
-        200,
-        200,
-        200,
-        200,
-        200,
-        200,
-        200,
-        200,
-        200,
-        200,
-        200,
-        200,
-        200,
-        200,
-        200,
-        200,
-        200,
-        200,
-        200,
-        200,
-        200,
-        200,
-        200,
-        200,
-        200,
-        200,
-        200,
-        200,
-        200,
-        200,
-        200,
-        200,
-        200,
-        200,
-        200,
-        200
-      ]
-    }
-  },
-  {
-    "type": "JWT_BYPASS",
-    "severity": "HIGH",
-    "detail": "Successfully bypassed JWT auth using weak key: secret",
-    "evidence": {
-      "url": "http://localhost:5002//",
-      "headers": {
-        "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0X3VzZXIiLCJpYXQiOjE3NDA1NzIyMTgsImV4cCI6MTc0MDU3NTgxOH0.wj4jX5hlhgzlgwp2E7k93H3hhkmFRSDuvIpVh8a7h1Q"
+      "url": "http://localhost:5002//users/v1/register",
+      "payload": {
+        "username": "test_mass_1740625640",
+        "password": "test1",
+        "email": "test_mass_1740625640@dom.com",
+        "admin": "true"
       },
-      "response": "{ \"message\": \"VAmPI the Vulnerable API\", \"help\": \"VAmPI is a vulnerable on purpose API. It was created in order to evaluate the efficiency of third party tools in identifying vulnerabilities in APIs but it can also be used in learning/teaching purposes.\", \"vulnerable\":1}"
-    }
-  },
-  {
-    "type": "JWT_BYPASS",
-    "severity": "HIGH",
-    "detail": "Successfully bypassed JWT auth using weak key: password",
-    "evidence": {
-      "url": "http://localhost:5002//",
-      "headers": {
-        "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0X3VzZXIiLCJpYXQiOjE3NDA1NzIyMTgsImV4cCI6MTc0MDU3NTgxOH0.UX4vPY7CKnvGJgUI7gkECrPolj9ebRqQd8jf0IzpLhs"
-      },
-      "response": "{ \"message\": \"VAmPI the Vulnerable API\", \"help\": \"VAmPI is a vulnerable on purpose API. It was created in order to evaluate the efficiency of third party tools in identifying vulnerabilities in APIs but it can also be used in learning/teaching purposes.\", \"vulnerable\":1}"
-    }
-  },
-  {
-    "type": "JWT_BYPASS",
-    "severity": "HIGH",
-    "detail": "Successfully bypassed JWT auth using weak key: 123456",
-    "evidence": {
-      "url": "http://localhost:5002//",
-      "headers": {
-        "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0X3VzZXIiLCJpYXQiOjE3NDA1NzIyMTgsImV4cCI6MTc0MDU3NTgxOH0.9prDlMHvLKsC6UPQGN2wWjEG9DL5BAse28zq0y4sp2g"
-      },
-      "response": "{ \"message\": \"VAmPI the Vulnerable API\", \"help\": \"VAmPI is a vulnerable on purpose API. It was created in order to evaluate the efficiency of third party tools in identifying vulnerabilities in APIs but it can also be used in learning/teaching purposes.\", \"vulnerable\":1}"
-    }
-  },
-  {
-    "type": "JWT_BYPASS",
-    "severity": "HIGH",
-    "detail": "Successfully bypassed JWT auth using weak key: key",
-    "evidence": {
-      "url": "http://localhost:5002//",
-      "headers": {
-        "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0X3VzZXIiLCJpYXQiOjE3NDA1NzIyMTgsImV4cCI6MTc0MDU3NTgxOH0.mHVyPLR8quSK7YHXkr2mLzU3YvzvVPM5otc7Qlc3Cg0"
-      },
-      "response": "{ \"message\": \"VAmPI the Vulnerable API\", \"help\": \"VAmPI is a vulnerable on purpose API. It was created in order to evaluate the efficiency of third party tools in identifying vulnerabilities in APIs but it can also be used in learning/teaching purposes.\", \"vulnerable\":1}"
-    }
-  },
-  {
-    "type": "JWT_BYPASS",
-    "severity": "HIGH",
-    "detail": "Successfully bypassed JWT auth using weak key: private",
-    "evidence": {
-      "url": "http://localhost:5002//",
-      "headers": {
-        "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0X3VzZXIiLCJpYXQiOjE3NDA1NzIyMTgsImV4cCI6MTc0MDU3NTgxOH0.z4efaQLUBYfSe5L15nQXkbOLzvGA8A2PdVcMAMwpueU"
-      },
-      "response": "{ \"message\": \"VAmPI the Vulnerable API\", \"help\": \"VAmPI is a vulnerable on purpose API. It was created in order to evaluate the efficiency of third party tools in identifying vulnerabilities in APIs but it can also be used in learning/teaching purposes.\", \"vulnerable\":1}"
-    }
-  },
-  {
-    "type": "JWT_BYPASS",
-    "severity": "HIGH",
-    "detail": "Successfully bypassed JWT auth using 'none' algorithm",
-    "evidence": {
-      "url": "http://localhost:5002//",
-      "headers": {
-        "Authorization": "Bearer eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJzdWIiOiJ0ZXN0X3VzZXIiLCJpYXQiOjE3NDA1NzIyMTgsImV4cCI6MTc0MDU3NTgxOH0."
-      },
-      "response": "{ \"message\": \"VAmPI the Vulnerable API\", \"help\": \"VAmPI is a vulnerable on purpose API. It was created in order to evaluate the efficiency of third party tools in identifying vulnerabilities in APIs but it can also be used in learning/teaching purposes.\", \"vulnerable\":1}"
-    }
-  },
-  {
-    "type": "BOLA",
-    "severity": "HIGH",
-    "detail": "Successfully accessed user data for ID admin without proper authorization",
-    "evidence": {
-      "url": "http://localhost:5002//users/v1/admin",
       "response": {
-        "username": "admin",
-        "email": "admin@mail.com"
+        "users": [
+          {
+            "admin": false,
+            "email": "mail1@mail.com",
+            "password": "pass1",
+            "username": "name1"
+          },
+          {
+            "admin": false,
+            "email": "mail2@mail.com",
+            "password": "pass2",
+            "username": "name2"
+          },
+          {
+            "admin": true,
+            "email": "admin@mail.com",
+            "password": "pass1",
+            "username": "admin"
+          },
+          {
+            "admin": true,
+            "email": "test_mass_1740625640@dom.com",
+            "password": "test1",
+            "username": "test_mass_1740625640"
+          }
+        ]
       }
     }
   },
@@ -291,7 +165,7 @@
         "email",
         "username"
       ],
-      "response_sample": "{'users': [{'email': 'mail1@mail.com', 'username': 'name1'}, {'email': 'mail2@mail.com', 'username': 'name2'}, {'email': 'admin@mail.com', 'username': 'admin'}]}"
+      "response_sample": "{'users': [{'email': 'mail1@mail.com', 'username': 'name1'}, {'email': 'mail2@mail.com', 'username': 'name2'}, {'email': 'admin@mail.com', 'username': 'admin'}, {'email': 'test_mass_1740625640@dom.com"
     }
   },
   {
@@ -305,11 +179,10 @@
     }
   },
   {
-    "type": "RATE_LIMIT_MISSING",
-    "severity": "HIGH",
-    "detail": "No rate limiting detected after 50 rapid requests",
+    "type": "RATE_LIMIT",
+    "severity": "MEDIUM",
+    "detail": "No rate limiting detected after sending multiple rapid requests",
     "evidence": {
-      "url": "http://localhost:5002//books/v1",
       "request_count": 50,
       "status_codes": [
         200,
@@ -372,7 +245,7 @@
     "evidence": {
       "url": "http://localhost:5002//",
       "headers": {
-        "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0X3VzZXIiLCJpYXQiOjE3NDA1NzIyMjQsImV4cCI6MTc0MDU3NTgyNH0.NBenKxnXCMkgI_prqKuq4jSVVUpX_vVHPgFco6ipinw"
+        "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0X3VzZXIiLCJpYXQiOjE3NDA2MjU2NDYsImV4cCI6MTc0MDYyOTI0Nn0.Z6W05OkMPQsT9JZUvDH4ZRrdHmh7exJMf-jltJ5MvSo"
       },
       "response": "{ \"message\": \"VAmPI the Vulnerable API\", \"help\": \"VAmPI is a vulnerable on purpose API. It was created in order to evaluate the efficiency of third party tools in identifying vulnerabilities in APIs but it can also be used in learning/teaching purposes.\", \"vulnerable\":1}"
     }
@@ -384,7 +257,7 @@
     "evidence": {
       "url": "http://localhost:5002//",
       "headers": {
-        "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0X3VzZXIiLCJpYXQiOjE3NDA1NzIyMjQsImV4cCI6MTc0MDU3NTgyNH0.0y-cm4N0Dh8vtUaTrIaadE7kfB78f1WeIJTtvR7hQk0"
+        "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0X3VzZXIiLCJpYXQiOjE3NDA2MjU2NDYsImV4cCI6MTc0MDYyOTI0Nn0.JNhNTgRZ6WVDS0NVa1s8N0JVXo7ddvHJ-VzJsSW6gWM"
       },
       "response": "{ \"message\": \"VAmPI the Vulnerable API\", \"help\": \"VAmPI is a vulnerable on purpose API. It was created in order to evaluate the efficiency of third party tools in identifying vulnerabilities in APIs but it can also be used in learning/teaching purposes.\", \"vulnerable\":1}"
     }
@@ -396,7 +269,7 @@
     "evidence": {
       "url": "http://localhost:5002//",
       "headers": {
-        "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0X3VzZXIiLCJpYXQiOjE3NDA1NzIyMjQsImV4cCI6MTc0MDU3NTgyNH0.ObWgA68V-m8TLCRRPnvvXXC_05LHtNqXI_VBpV9wJAE"
+        "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0X3VzZXIiLCJpYXQiOjE3NDA2MjU2NDYsImV4cCI6MTc0MDYyOTI0Nn0.xEy7RTfpxLOH2rqcGtnDaZYMR56YhrbfElIqShBFA0s"
       },
       "response": "{ \"message\": \"VAmPI the Vulnerable API\", \"help\": \"VAmPI is a vulnerable on purpose API. It was created in order to evaluate the efficiency of third party tools in identifying vulnerabilities in APIs but it can also be used in learning/teaching purposes.\", \"vulnerable\":1}"
     }
@@ -408,7 +281,7 @@
     "evidence": {
       "url": "http://localhost:5002//",
       "headers": {
-        "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0X3VzZXIiLCJpYXQiOjE3NDA1NzIyMjQsImV4cCI6MTc0MDU3NTgyNH0.Z7csQ_rHRqX0NsZxBfsOFQQkmkdE5TyIUq6J2XWpChY"
+        "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0X3VzZXIiLCJpYXQiOjE3NDA2MjU2NDYsImV4cCI6MTc0MDYyOTI0Nn0.gT5rfYHpsEFfNYFTUpCd55wJwLqPJ-1H--t9ZnaEfjE"
       },
       "response": "{ \"message\": \"VAmPI the Vulnerable API\", \"help\": \"VAmPI is a vulnerable on purpose API. It was created in order to evaluate the efficiency of third party tools in identifying vulnerabilities in APIs but it can also be used in learning/teaching purposes.\", \"vulnerable\":1}"
     }
@@ -420,7 +293,7 @@
     "evidence": {
       "url": "http://localhost:5002//",
       "headers": {
-        "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0X3VzZXIiLCJpYXQiOjE3NDA1NzIyMjQsImV4cCI6MTc0MDU3NTgyNH0.7DBGsW5UszJ8AlupjuQqf2mr58TbgcqIC2CH3Fv1CZk"
+        "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0X3VzZXIiLCJpYXQiOjE3NDA2MjU2NDYsImV4cCI6MTc0MDYyOTI0Nn0.NifMQBpBvXpMFcPBPy1wEFYOYZqOmuX0kXpmLDWI0aM"
       },
       "response": "{ \"message\": \"VAmPI the Vulnerable API\", \"help\": \"VAmPI is a vulnerable on purpose API. It was created in order to evaluate the efficiency of third party tools in identifying vulnerabilities in APIs but it can also be used in learning/teaching purposes.\", \"vulnerable\":1}"
     }
@@ -432,7 +305,7 @@
     "evidence": {
       "url": "http://localhost:5002//",
       "headers": {
-        "Authorization": "Bearer eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJzdWIiOiJ0ZXN0X3VzZXIiLCJpYXQiOjE3NDA1NzIyMjQsImV4cCI6MTc0MDU3NTgyNH0."
+        "Authorization": "Bearer eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJzdWIiOiJ0ZXN0X3VzZXIiLCJpYXQiOjE3NDA2MjU2NDYsImV4cCI6MTc0MDYyOTI0Nn0."
       },
       "response": "{ \"message\": \"VAmPI the Vulnerable API\", \"help\": \"VAmPI is a vulnerable on purpose API. It was created in order to evaluate the efficiency of third party tools in identifying vulnerabilities in APIs but it can also be used in learning/teaching purposes.\", \"vulnerable\":1}"
     }
@@ -446,6 +319,54 @@
       "response": {
         "username": "admin",
         "email": "admin@mail.com"
+      }
+    }
+  },
+  {
+    "type": "MASS_ASSIGNMENT",
+    "severity": "HIGH",
+    "detail": "Successfully created admin user through mass assignment",
+    "evidence": {
+      "url": "http://localhost:5002//users/v1/register",
+      "payload": {
+        "username": "test_mass_1740625646",
+        "password": "test1",
+        "email": "test_mass_1740625646@dom.com",
+        "admin": "true"
+      },
+      "response": {
+        "users": [
+          {
+            "admin": false,
+            "email": "mail1@mail.com",
+            "password": "pass1",
+            "username": "name1"
+          },
+          {
+            "admin": false,
+            "email": "mail2@mail.com",
+            "password": "pass2",
+            "username": "name2"
+          },
+          {
+            "admin": true,
+            "email": "admin@mail.com",
+            "password": "pass1",
+            "username": "admin"
+          },
+          {
+            "admin": true,
+            "email": "test_mass_1740625640@dom.com",
+            "password": "test1",
+            "username": "test_mass_1740625640"
+          },
+          {
+            "admin": true,
+            "email": "test_mass_1740625646@dom.com",
+            "password": "test1",
+            "username": "test_mass_1740625646"
+          }
+        ]
       }
     }
   },
@@ -474,7 +395,7 @@
         "email",
         "username"
       ],
-      "response_sample": "{'users': [{'email': 'mail1@mail.com', 'username': 'name1'}, {'email': 'mail2@mail.com', 'username': 'name2'}, {'email': 'admin@mail.com', 'username': 'admin'}]}"
+      "response_sample": "{'users': [{'email': 'mail1@mail.com', 'username': 'name1'}, {'email': 'mail2@mail.com', 'username': 'name2'}, {'email': 'admin@mail.com', 'username': 'admin'}, {'email': 'test_mass_1740625640@dom.com"
     }
   },
   {
@@ -488,11 +409,10 @@
     }
   },
   {
-    "type": "RATE_LIMIT_MISSING",
-    "severity": "HIGH",
-    "detail": "No rate limiting detected after 50 rapid requests",
+    "type": "RATE_LIMIT",
+    "severity": "MEDIUM",
+    "detail": "No rate limiting detected after sending multiple rapid requests",
     "evidence": {
-      "url": "http://localhost:5002//books/v1",
       "request_count": 50,
       "status_codes": [
         200,
@@ -555,7 +475,7 @@
     "evidence": {
       "url": "http://localhost:5002//",
       "headers": {
-        "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0X3VzZXIiLCJpYXQiOjE3NDA1NzIyMzAsImV4cCI6MTc0MDU3NTgzMH0.S1kMqQQUda7k7QVOz74PvOHRGVCS8WMNsExhZZNpmO0"
+        "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0X3VzZXIiLCJpYXQiOjE3NDA2MjU2NTIsImV4cCI6MTc0MDYyOTI1Mn0.GfqznKm8FvGdPIwM25NNASF1s0CavTXc2OPi096F1-I"
       },
       "response": "{ \"message\": \"VAmPI the Vulnerable API\", \"help\": \"VAmPI is a vulnerable on purpose API. It was created in order to evaluate the efficiency of third party tools in identifying vulnerabilities in APIs but it can also be used in learning/teaching purposes.\", \"vulnerable\":1}"
     }
@@ -567,7 +487,7 @@
     "evidence": {
       "url": "http://localhost:5002//",
       "headers": {
-        "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0X3VzZXIiLCJpYXQiOjE3NDA1NzIyMzAsImV4cCI6MTc0MDU3NTgzMH0.ej52kDAsylle_YjDNSgCPjS4N-HNqyN9F8le6OP_x3o"
+        "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0X3VzZXIiLCJpYXQiOjE3NDA2MjU2NTIsImV4cCI6MTc0MDYyOTI1Mn0.DWnMjHLOjJkc_Aw6V4yBlkfZLl9zwHMMYilA49eRNu8"
       },
       "response": "{ \"message\": \"VAmPI the Vulnerable API\", \"help\": \"VAmPI is a vulnerable on purpose API. It was created in order to evaluate the efficiency of third party tools in identifying vulnerabilities in APIs but it can also be used in learning/teaching purposes.\", \"vulnerable\":1}"
     }
@@ -579,7 +499,7 @@
     "evidence": {
       "url": "http://localhost:5002//",
       "headers": {
-        "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0X3VzZXIiLCJpYXQiOjE3NDA1NzIyMzAsImV4cCI6MTc0MDU3NTgzMH0.tjHEMWLQgvIgTAl-t1pKZM-uM7QbwyACtObLZ06C7gk"
+        "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0X3VzZXIiLCJpYXQiOjE3NDA2MjU2NTIsImV4cCI6MTc0MDYyOTI1Mn0.fNZXayacOiOK1CRYp4SlmRIt26q8IhBwgmyKMAUvV3E"
       },
       "response": "{ \"message\": \"VAmPI the Vulnerable API\", \"help\": \"VAmPI is a vulnerable on purpose API. It was created in order to evaluate the efficiency of third party tools in identifying vulnerabilities in APIs but it can also be used in learning/teaching purposes.\", \"vulnerable\":1}"
     }
@@ -591,7 +511,7 @@
     "evidence": {
       "url": "http://localhost:5002//",
       "headers": {
-        "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0X3VzZXIiLCJpYXQiOjE3NDA1NzIyMzAsImV4cCI6MTc0MDU3NTgzMH0.UtVLGOoivLs-S7HJWB9jgCXq9NbH78yvWhFn9u3i5-U"
+        "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0X3VzZXIiLCJpYXQiOjE3NDA2MjU2NTIsImV4cCI6MTc0MDYyOTI1Mn0.rVTMMUjj5OEYrEjOvhm_DWr9EgVSOjAYmlozkMyclCg"
       },
       "response": "{ \"message\": \"VAmPI the Vulnerable API\", \"help\": \"VAmPI is a vulnerable on purpose API. It was created in order to evaluate the efficiency of third party tools in identifying vulnerabilities in APIs but it can also be used in learning/teaching purposes.\", \"vulnerable\":1}"
     }
@@ -603,7 +523,7 @@
     "evidence": {
       "url": "http://localhost:5002//",
       "headers": {
-        "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0X3VzZXIiLCJpYXQiOjE3NDA1NzIyMzAsImV4cCI6MTc0MDU3NTgzMH0.oQx5swiPZOPJ8TSicj6TjC2Vx-dAO3kKqPmZTCRKtkM"
+        "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0X3VzZXIiLCJpYXQiOjE3NDA2MjU2NTIsImV4cCI6MTc0MDYyOTI1Mn0.hPZwkQG7dH9y8ylFihemgy1AiPOKpgfa2KDKvgRsG6o"
       },
       "response": "{ \"message\": \"VAmPI the Vulnerable API\", \"help\": \"VAmPI is a vulnerable on purpose API. It was created in order to evaluate the efficiency of third party tools in identifying vulnerabilities in APIs but it can also be used in learning/teaching purposes.\", \"vulnerable\":1}"
     }
@@ -615,7 +535,7 @@
     "evidence": {
       "url": "http://localhost:5002//",
       "headers": {
-        "Authorization": "Bearer eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJzdWIiOiJ0ZXN0X3VzZXIiLCJpYXQiOjE3NDA1NzIyMzAsImV4cCI6MTc0MDU3NTgzMH0."
+        "Authorization": "Bearer eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJzdWIiOiJ0ZXN0X3VzZXIiLCJpYXQiOjE3NDA2MjU2NTIsImV4cCI6MTc0MDYyOTI1Mn0."
       },
       "response": "{ \"message\": \"VAmPI the Vulnerable API\", \"help\": \"VAmPI is a vulnerable on purpose API. It was created in order to evaluate the efficiency of third party tools in identifying vulnerabilities in APIs but it can also be used in learning/teaching purposes.\", \"vulnerable\":1}"
     }
@@ -629,6 +549,60 @@
       "response": {
         "username": "admin",
         "email": "admin@mail.com"
+      }
+    }
+  },
+  {
+    "type": "MASS_ASSIGNMENT",
+    "severity": "HIGH",
+    "detail": "Successfully created admin user through mass assignment",
+    "evidence": {
+      "url": "http://localhost:5002//users/v1/register",
+      "payload": {
+        "username": "test_mass_1740625652",
+        "password": "test1",
+        "email": "test_mass_1740625652@dom.com",
+        "admin": "true"
+      },
+      "response": {
+        "users": [
+          {
+            "admin": false,
+            "email": "mail1@mail.com",
+            "password": "pass1",
+            "username": "name1"
+          },
+          {
+            "admin": false,
+            "email": "mail2@mail.com",
+            "password": "pass2",
+            "username": "name2"
+          },
+          {
+            "admin": true,
+            "email": "admin@mail.com",
+            "password": "pass1",
+            "username": "admin"
+          },
+          {
+            "admin": true,
+            "email": "test_mass_1740625640@dom.com",
+            "password": "test1",
+            "username": "test_mass_1740625640"
+          },
+          {
+            "admin": true,
+            "email": "test_mass_1740625646@dom.com",
+            "password": "test1",
+            "username": "test_mass_1740625646"
+          },
+          {
+            "admin": true,
+            "email": "test_mass_1740625652@dom.com",
+            "password": "test1",
+            "username": "test_mass_1740625652"
+          }
+        ]
       }
     }
   },
@@ -657,7 +631,7 @@
         "email",
         "username"
       ],
-      "response_sample": "{'users': [{'email': 'mail1@mail.com', 'username': 'name1'}, {'email': 'mail2@mail.com', 'username': 'name2'}, {'email': 'admin@mail.com', 'username': 'admin'}]}"
+      "response_sample": "{'users': [{'email': 'mail1@mail.com', 'username': 'name1'}, {'email': 'mail2@mail.com', 'username': 'name2'}, {'email': 'admin@mail.com', 'username': 'admin'}, {'email': 'test_mass_1740625640@dom.com"
     }
   },
   {
@@ -671,11 +645,10 @@
     }
   },
   {
-    "type": "RATE_LIMIT_MISSING",
-    "severity": "HIGH",
-    "detail": "No rate limiting detected after 50 rapid requests",
+    "type": "RATE_LIMIT",
+    "severity": "MEDIUM",
+    "detail": "No rate limiting detected after sending multiple rapid requests",
     "evidence": {
-      "url": "http://localhost:5002//books/v1",
       "request_count": 50,
       "status_codes": [
         200,
@@ -738,7 +711,7 @@
     "evidence": {
       "url": "http://localhost:5002//",
       "headers": {
-        "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0X3VzZXIiLCJpYXQiOjE3NDA1NzIyMzYsImV4cCI6MTc0MDU3NTgzNn0.abwi-p8iiiTRIWA9cKTdLxw6NchAKF_Il5-DyzLJbM4"
+        "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0X3VzZXIiLCJpYXQiOjE3NDA2MjU2NTgsImV4cCI6MTc0MDYyOTI1OH0.iDivqH-NaAxHrEpsqQSMZdwKObyPr_C8Cit9Jas4Q48"
       },
       "response": "{ \"message\": \"VAmPI the Vulnerable API\", \"help\": \"VAmPI is a vulnerable on purpose API. It was created in order to evaluate the efficiency of third party tools in identifying vulnerabilities in APIs but it can also be used in learning/teaching purposes.\", \"vulnerable\":1}"
     }
@@ -750,7 +723,7 @@
     "evidence": {
       "url": "http://localhost:5002//",
       "headers": {
-        "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0X3VzZXIiLCJpYXQiOjE3NDA1NzIyMzYsImV4cCI6MTc0MDU3NTgzNn0.fV9Ybz35sgn8t4MT7xS9O66KMVx6H8QoFUM0KZOO1ak"
+        "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0X3VzZXIiLCJpYXQiOjE3NDA2MjU2NTgsImV4cCI6MTc0MDYyOTI1OH0.GCpOB2RAxnvmSuXA0FFo2oNbn6khbT-oqTy338Bt2fs"
       },
       "response": "{ \"message\": \"VAmPI the Vulnerable API\", \"help\": \"VAmPI is a vulnerable on purpose API. It was created in order to evaluate the efficiency of third party tools in identifying vulnerabilities in APIs but it can also be used in learning/teaching purposes.\", \"vulnerable\":1}"
     }
@@ -762,7 +735,7 @@
     "evidence": {
       "url": "http://localhost:5002//",
       "headers": {
-        "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0X3VzZXIiLCJpYXQiOjE3NDA1NzIyMzYsImV4cCI6MTc0MDU3NTgzNn0.asi-Nq-Zqki5MMwUYR_R83LgzAYaL3dchfeImExQhFk"
+        "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0X3VzZXIiLCJpYXQiOjE3NDA2MjU2NTgsImV4cCI6MTc0MDYyOTI1OH0.U3m_E69NVMafDAjrn5U6zVA09-Xe07gA-4f2PUwa_x0"
       },
       "response": "{ \"message\": \"VAmPI the Vulnerable API\", \"help\": \"VAmPI is a vulnerable on purpose API. It was created in order to evaluate the efficiency of third party tools in identifying vulnerabilities in APIs but it can also be used in learning/teaching purposes.\", \"vulnerable\":1}"
     }
@@ -774,7 +747,7 @@
     "evidence": {
       "url": "http://localhost:5002//",
       "headers": {
-        "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0X3VzZXIiLCJpYXQiOjE3NDA1NzIyMzYsImV4cCI6MTc0MDU3NTgzNn0.G-TFFcBXEdA9pHM1M3-GcNr7wiJrGsBJ_NU9tHVACbM"
+        "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0X3VzZXIiLCJpYXQiOjE3NDA2MjU2NTgsImV4cCI6MTc0MDYyOTI1OH0.lXfqbqAeYlJP8aVMWpKCHX1ui8GF2DlXWXGiTvN_Z7A"
       },
       "response": "{ \"message\": \"VAmPI the Vulnerable API\", \"help\": \"VAmPI is a vulnerable on purpose API. It was created in order to evaluate the efficiency of third party tools in identifying vulnerabilities in APIs but it can also be used in learning/teaching purposes.\", \"vulnerable\":1}"
     }
@@ -786,7 +759,7 @@
     "evidence": {
       "url": "http://localhost:5002//",
       "headers": {
-        "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0X3VzZXIiLCJpYXQiOjE3NDA1NzIyMzYsImV4cCI6MTc0MDU3NTgzNn0.tTxSlwqdm3FcWDNZ1wkj4f_K5gy8Ze2prrKp3tX6rG8"
+        "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0X3VzZXIiLCJpYXQiOjE3NDA2MjU2NTgsImV4cCI6MTc0MDYyOTI1OH0.SUxlOfha1BctFmRFAkpk6lEG0HkJtatugWer8aoWIks"
       },
       "response": "{ \"message\": \"VAmPI the Vulnerable API\", \"help\": \"VAmPI is a vulnerable on purpose API. It was created in order to evaluate the efficiency of third party tools in identifying vulnerabilities in APIs but it can also be used in learning/teaching purposes.\", \"vulnerable\":1}"
     }
@@ -798,7 +771,7 @@
     "evidence": {
       "url": "http://localhost:5002//",
       "headers": {
-        "Authorization": "Bearer eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJzdWIiOiJ0ZXN0X3VzZXIiLCJpYXQiOjE3NDA1NzIyMzYsImV4cCI6MTc0MDU3NTgzNn0."
+        "Authorization": "Bearer eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJzdWIiOiJ0ZXN0X3VzZXIiLCJpYXQiOjE3NDA2MjU2NTgsImV4cCI6MTc0MDYyOTI1OH0."
       },
       "response": "{ \"message\": \"VAmPI the Vulnerable API\", \"help\": \"VAmPI is a vulnerable on purpose API. It was created in order to evaluate the efficiency of third party tools in identifying vulnerabilities in APIs but it can also be used in learning/teaching purposes.\", \"vulnerable\":1}"
     }
@@ -812,6 +785,66 @@
       "response": {
         "username": "admin",
         "email": "admin@mail.com"
+      }
+    }
+  },
+  {
+    "type": "MASS_ASSIGNMENT",
+    "severity": "HIGH",
+    "detail": "Successfully created admin user through mass assignment",
+    "evidence": {
+      "url": "http://localhost:5002//users/v1/register",
+      "payload": {
+        "username": "test_mass_1740625658",
+        "password": "test1",
+        "email": "test_mass_1740625658@dom.com",
+        "admin": "true"
+      },
+      "response": {
+        "users": [
+          {
+            "admin": false,
+            "email": "mail1@mail.com",
+            "password": "pass1",
+            "username": "name1"
+          },
+          {
+            "admin": false,
+            "email": "mail2@mail.com",
+            "password": "pass2",
+            "username": "name2"
+          },
+          {
+            "admin": true,
+            "email": "admin@mail.com",
+            "password": "pass1",
+            "username": "admin"
+          },
+          {
+            "admin": true,
+            "email": "test_mass_1740625640@dom.com",
+            "password": "test1",
+            "username": "test_mass_1740625640"
+          },
+          {
+            "admin": true,
+            "email": "test_mass_1740625646@dom.com",
+            "password": "test1",
+            "username": "test_mass_1740625646"
+          },
+          {
+            "admin": true,
+            "email": "test_mass_1740625652@dom.com",
+            "password": "test1",
+            "username": "test_mass_1740625652"
+          },
+          {
+            "admin": true,
+            "email": "test_mass_1740625658@dom.com",
+            "password": "test1",
+            "username": "test_mass_1740625658"
+          }
+        ]
       }
     }
   },
@@ -840,7 +873,7 @@
         "email",
         "username"
       ],
-      "response_sample": "{'users': [{'email': 'mail1@mail.com', 'username': 'name1'}, {'email': 'mail2@mail.com', 'username': 'name2'}, {'email': 'admin@mail.com', 'username': 'admin'}]}"
+      "response_sample": "{'users': [{'email': 'mail1@mail.com', 'username': 'name1'}, {'email': 'mail2@mail.com', 'username': 'name2'}, {'email': 'admin@mail.com', 'username': 'admin'}, {'email': 'test_mass_1740625640@dom.com"
     }
   },
   {
@@ -854,11 +887,10 @@
     }
   },
   {
-    "type": "RATE_LIMIT_MISSING",
-    "severity": "HIGH",
-    "detail": "No rate limiting detected after 50 rapid requests",
+    "type": "RATE_LIMIT",
+    "severity": "MEDIUM",
+    "detail": "No rate limiting detected after sending multiple rapid requests",
     "evidence": {
-      "url": "http://localhost:5002//books/v1",
       "request_count": 50,
       "status_codes": [
         200,
@@ -921,7 +953,7 @@
     "evidence": {
       "url": "http://localhost:5002//",
       "headers": {
-        "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0X3VzZXIiLCJpYXQiOjE3NDA1NzIyNDIsImV4cCI6MTc0MDU3NTg0Mn0.VkrR4QRcVSOF8mzZ1V5K-V1cDBxXOimZZVMsXPBrocE"
+        "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0X3VzZXIiLCJpYXQiOjE3NDA2MjU2NjQsImV4cCI6MTc0MDYyOTI2NH0.YJg7iGDjfUP4dwjHop3QfRUFas6j_ND5pBXS52l1_aw"
       },
       "response": "{ \"message\": \"VAmPI the Vulnerable API\", \"help\": \"VAmPI is a vulnerable on purpose API. It was created in order to evaluate the efficiency of third party tools in identifying vulnerabilities in APIs but it can also be used in learning/teaching purposes.\", \"vulnerable\":1}"
     }
@@ -933,7 +965,7 @@
     "evidence": {
       "url": "http://localhost:5002//",
       "headers": {
-        "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0X3VzZXIiLCJpYXQiOjE3NDA1NzIyNDIsImV4cCI6MTc0MDU3NTg0Mn0.nThlZfadoUtz14pwMqJphu7hlYHXZyuLzwKX6sKr1yw"
+        "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0X3VzZXIiLCJpYXQiOjE3NDA2MjU2NjQsImV4cCI6MTc0MDYyOTI2NH0.rzPFnTUosEHgB1WqiN0AnpvlvcUijVX2ltwpUd3Tdeg"
       },
       "response": "{ \"message\": \"VAmPI the Vulnerable API\", \"help\": \"VAmPI is a vulnerable on purpose API. It was created in order to evaluate the efficiency of third party tools in identifying vulnerabilities in APIs but it can also be used in learning/teaching purposes.\", \"vulnerable\":1}"
     }
@@ -945,7 +977,7 @@
     "evidence": {
       "url": "http://localhost:5002//",
       "headers": {
-        "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0X3VzZXIiLCJpYXQiOjE3NDA1NzIyNDIsImV4cCI6MTc0MDU3NTg0Mn0.z5o2YYQ4d-gniDelliKsdW9CNNojjKc0shK_LsmzWR4"
+        "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0X3VzZXIiLCJpYXQiOjE3NDA2MjU2NjQsImV4cCI6MTc0MDYyOTI2NH0.szvZva_2_6V_Xak1atY_qK2MBF1SOCygidipAySi68A"
       },
       "response": "{ \"message\": \"VAmPI the Vulnerable API\", \"help\": \"VAmPI is a vulnerable on purpose API. It was created in order to evaluate the efficiency of third party tools in identifying vulnerabilities in APIs but it can also be used in learning/teaching purposes.\", \"vulnerable\":1}"
     }
@@ -957,7 +989,7 @@
     "evidence": {
       "url": "http://localhost:5002//",
       "headers": {
-        "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0X3VzZXIiLCJpYXQiOjE3NDA1NzIyNDIsImV4cCI6MTc0MDU3NTg0Mn0.PR_jfHj8ccrVfNG7wgbTNBA9UQAZGF5qt-qv_SlpmEM"
+        "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0X3VzZXIiLCJpYXQiOjE3NDA2MjU2NjQsImV4cCI6MTc0MDYyOTI2NH0.f83QlRi7SImf3R9qoMwxLWL_1-dt6nATdTGBPf7y6a0"
       },
       "response": "{ \"message\": \"VAmPI the Vulnerable API\", \"help\": \"VAmPI is a vulnerable on purpose API. It was created in order to evaluate the efficiency of third party tools in identifying vulnerabilities in APIs but it can also be used in learning/teaching purposes.\", \"vulnerable\":1}"
     }
@@ -969,7 +1001,7 @@
     "evidence": {
       "url": "http://localhost:5002//",
       "headers": {
-        "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0X3VzZXIiLCJpYXQiOjE3NDA1NzIyNDIsImV4cCI6MTc0MDU3NTg0Mn0.XaT4dr_jyjABUBPoGisurijcf_GUsaXBhPSdOA38XC0"
+        "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0X3VzZXIiLCJpYXQiOjE3NDA2MjU2NjQsImV4cCI6MTc0MDYyOTI2NH0.ZXd4T_YQ8bS3IJXalIkOcvJEpv13fQuNj8zR7Bm1PAk"
       },
       "response": "{ \"message\": \"VAmPI the Vulnerable API\", \"help\": \"VAmPI is a vulnerable on purpose API. It was created in order to evaluate the efficiency of third party tools in identifying vulnerabilities in APIs but it can also be used in learning/teaching purposes.\", \"vulnerable\":1}"
     }
@@ -981,17 +1013,264 @@
     "evidence": {
       "url": "http://localhost:5002//",
       "headers": {
-        "Authorization": "Bearer eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJzdWIiOiJ0ZXN0X3VzZXIiLCJpYXQiOjE3NDA1NzIyNDIsImV4cCI6MTc0MDU3NTg0Mn0."
+        "Authorization": "Bearer eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJzdWIiOiJ0ZXN0X3VzZXIiLCJpYXQiOjE3NDA2MjU2NjQsImV4cCI6MTc0MDYyOTI2NH0."
       },
       "response": "{ \"message\": \"VAmPI the Vulnerable API\", \"help\": \"VAmPI is a vulnerable on purpose API. It was created in order to evaluate the efficiency of third party tools in identifying vulnerabilities in APIs but it can also be used in learning/teaching purposes.\", \"vulnerable\":1}"
     }
   },
   {
-    "type": "RATE_LIMIT_MISSING",
+    "type": "BOLA",
+    "severity": "HIGH",
+    "detail": "Successfully accessed user data for ID admin without proper authorization",
+    "evidence": {
+      "url": "http://localhost:5002//users/v1/admin",
+      "response": {
+        "username": "admin",
+        "email": "admin@mail.com"
+      }
+    }
+  },
+  {
+    "type": "MASS_ASSIGNMENT",
+    "severity": "HIGH",
+    "detail": "Successfully created admin user through mass assignment",
+    "evidence": {
+      "url": "http://localhost:5002//users/v1/register",
+      "payload": {
+        "username": "test_mass_1740625664",
+        "password": "test1",
+        "email": "test_mass_1740625664@dom.com",
+        "admin": "true"
+      },
+      "response": {
+        "users": [
+          {
+            "admin": false,
+            "email": "mail1@mail.com",
+            "password": "pass1",
+            "username": "name1"
+          },
+          {
+            "admin": false,
+            "email": "mail2@mail.com",
+            "password": "pass2",
+            "username": "name2"
+          },
+          {
+            "admin": true,
+            "email": "admin@mail.com",
+            "password": "pass1",
+            "username": "admin"
+          },
+          {
+            "admin": true,
+            "email": "test_mass_1740625640@dom.com",
+            "password": "test1",
+            "username": "test_mass_1740625640"
+          },
+          {
+            "admin": true,
+            "email": "test_mass_1740625646@dom.com",
+            "password": "test1",
+            "username": "test_mass_1740625646"
+          },
+          {
+            "admin": true,
+            "email": "test_mass_1740625652@dom.com",
+            "password": "test1",
+            "username": "test_mass_1740625652"
+          },
+          {
+            "admin": true,
+            "email": "test_mass_1740625658@dom.com",
+            "password": "test1",
+            "username": "test_mass_1740625658"
+          },
+          {
+            "admin": true,
+            "email": "test_mass_1740625664@dom.com",
+            "password": "test1",
+            "username": "test_mass_1740625664"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "EXCESSIVE_DATA_EXPOSURE",
+    "severity": "HIGH",
+    "detail": "Endpoint /users/v1/_debug exposes sensitive data",
+    "evidence": {
+      "url": "http://localhost:5002//users/v1/_debug",
+      "exposed_data_types": [
+        "password",
+        "admin_status",
+        "email",
+        "username"
+      ],
+      "response_sample": "{'users': [{'admin': False, 'email': 'mail1@mail.com', 'password': 'pass1', 'username': 'name1'}, {'admin': False, 'email': 'mail2@mail.com', 'password': 'pass2', 'username': 'name2'}, {'admin': True,"
+    }
+  },
+  {
+    "type": "EXCESSIVE_DATA_EXPOSURE",
+    "severity": "HIGH",
+    "detail": "Endpoint /users/v1 exposes sensitive data",
+    "evidence": {
+      "url": "http://localhost:5002//users/v1",
+      "exposed_data_types": [
+        "email",
+        "username"
+      ],
+      "response_sample": "{'users': [{'email': 'mail1@mail.com', 'username': 'name1'}, {'email': 'mail2@mail.com', 'username': 'name2'}, {'email': 'admin@mail.com', 'username': 'admin'}, {'email': 'test_mass_1740625640@dom.com"
+    }
+  },
+  {
+    "type": "USER_ENUMERATION",
+    "severity": "MEDIUM",
+    "detail": "Different error message for existing username: admin",
+    "evidence": {
+      "url": "http://localhost:5002//users/v1/login",
+      "username": "admin",
+      "response": "{ \"status\": \"fail\", \"message\": \"Password is not correct for the given username.\"}"
+    }
+  },
+  {
+    "type": "RATE_LIMIT",
+    "severity": "MEDIUM",
+    "detail": "No rate limiting detected after sending multiple rapid requests",
+    "evidence": {
+      "request_count": 50,
+      "status_codes": [
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200
+      ]
+    }
+  },
+  {
+    "type": "JWT_BYPASS",
+    "severity": "HIGH",
+    "detail": "Successfully bypassed JWT auth using weak key: secret",
+    "evidence": {
+      "url": "http://localhost:5002//",
+      "headers": {
+        "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0X3VzZXIiLCJpYXQiOjE3NDA2MjU2NzAsImV4cCI6MTc0MDYyOTI3MH0.I6GeJtNUqQRZ9tdzv1vkJpsAg7sCM5BJOG1oY1IqwmY"
+      },
+      "response": "{ \"message\": \"VAmPI the Vulnerable API\", \"help\": \"VAmPI is a vulnerable on purpose API. It was created in order to evaluate the efficiency of third party tools in identifying vulnerabilities in APIs but it can also be used in learning/teaching purposes.\", \"vulnerable\":1}"
+    }
+  },
+  {
+    "type": "JWT_BYPASS",
+    "severity": "HIGH",
+    "detail": "Successfully bypassed JWT auth using weak key: password",
+    "evidence": {
+      "url": "http://localhost:5002//",
+      "headers": {
+        "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0X3VzZXIiLCJpYXQiOjE3NDA2MjU2NzAsImV4cCI6MTc0MDYyOTI3MH0.E_YGnE9LSxlw1dHEqnIoemjOeaV93EGzrbAjgf_Jid4"
+      },
+      "response": "{ \"message\": \"VAmPI the Vulnerable API\", \"help\": \"VAmPI is a vulnerable on purpose API. It was created in order to evaluate the efficiency of third party tools in identifying vulnerabilities in APIs but it can also be used in learning/teaching purposes.\", \"vulnerable\":1}"
+    }
+  },
+  {
+    "type": "JWT_BYPASS",
+    "severity": "HIGH",
+    "detail": "Successfully bypassed JWT auth using weak key: 123456",
+    "evidence": {
+      "url": "http://localhost:5002//",
+      "headers": {
+        "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0X3VzZXIiLCJpYXQiOjE3NDA2MjU2NzAsImV4cCI6MTc0MDYyOTI3MH0.VkCuJwlmuJoQ3Z_IF8YA7ihDRZ4ZvmxN3K-dosV7b3s"
+      },
+      "response": "{ \"message\": \"VAmPI the Vulnerable API\", \"help\": \"VAmPI is a vulnerable on purpose API. It was created in order to evaluate the efficiency of third party tools in identifying vulnerabilities in APIs but it can also be used in learning/teaching purposes.\", \"vulnerable\":1}"
+    }
+  },
+  {
+    "type": "JWT_BYPASS",
+    "severity": "HIGH",
+    "detail": "Successfully bypassed JWT auth using weak key: key",
+    "evidence": {
+      "url": "http://localhost:5002//",
+      "headers": {
+        "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0X3VzZXIiLCJpYXQiOjE3NDA2MjU2NzAsImV4cCI6MTc0MDYyOTI3MH0.yTOt6FZNVO3qdX1IlVnjEK_ukPNL7QSJRlULG02HZtA"
+      },
+      "response": "{ \"message\": \"VAmPI the Vulnerable API\", \"help\": \"VAmPI is a vulnerable on purpose API. It was created in order to evaluate the efficiency of third party tools in identifying vulnerabilities in APIs but it can also be used in learning/teaching purposes.\", \"vulnerable\":1}"
+    }
+  },
+  {
+    "type": "JWT_BYPASS",
+    "severity": "HIGH",
+    "detail": "Successfully bypassed JWT auth using weak key: private",
+    "evidence": {
+      "url": "http://localhost:5002//",
+      "headers": {
+        "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0X3VzZXIiLCJpYXQiOjE3NDA2MjU2NzAsImV4cCI6MTc0MDYyOTI3MH0.h5asJjggIEOZFYFmxJ5LliL2c8HJO-u3mT4PDefxBKg"
+      },
+      "response": "{ \"message\": \"VAmPI the Vulnerable API\", \"help\": \"VAmPI is a vulnerable on purpose API. It was created in order to evaluate the efficiency of third party tools in identifying vulnerabilities in APIs but it can also be used in learning/teaching purposes.\", \"vulnerable\":1}"
+    }
+  },
+  {
+    "type": "JWT_BYPASS",
     "severity": "HIGH",
-    "detail": "No rate limiting detected after 50 rapid requests",
+    "detail": "Successfully bypassed JWT auth using 'none' algorithm",
+    "evidence": {
+      "url": "http://localhost:5002//",
+      "headers": {
+        "Authorization": "Bearer eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJzdWIiOiJ0ZXN0X3VzZXIiLCJpYXQiOjE3NDA2MjU2NzAsImV4cCI6MTc0MDYyOTI3MH0."
+      },
+      "response": "{ \"message\": \"VAmPI the Vulnerable API\", \"help\": \"VAmPI is a vulnerable on purpose API. It was created in order to evaluate the efficiency of third party tools in identifying vulnerabilities in APIs but it can also be used in learning/teaching purposes.\", \"vulnerable\":1}"
+    }
+  },
+  {
+    "type": "RATE_LIMIT",
+    "severity": "MEDIUM",
+    "detail": "No rate limiting detected after sending multiple rapid requests",
     "evidence": {
-      "url": "http://localhost:5002/console/books/v1",
       "request_count": 50,
       "status_codes": [
         404,
@@ -1048,11 +1327,10 @@
     }
   },
   {
-    "type": "RATE_LIMIT_MISSING",
-    "severity": "HIGH",
-    "detail": "No rate limiting detected after 50 rapid requests",
+    "type": "RATE_LIMIT",
+    "severity": "MEDIUM",
+    "detail": "No rate limiting detected after sending multiple rapid requests",
     "evidence": {
-      "url": "http://localhost:5002/console/books/v1",
       "request_count": 50,
       "status_codes": [
         404,
@@ -1109,11 +1387,10 @@
     }
   },
   {
-    "type": "RATE_LIMIT_MISSING",
-    "severity": "HIGH",
-    "detail": "No rate limiting detected after 50 rapid requests",
+    "type": "RATE_LIMIT",
+    "severity": "MEDIUM",
+    "detail": "No rate limiting detected after sending multiple rapid requests",
     "evidence": {
-      "url": "http://localhost:5002/console/books/v1",
       "request_count": 50,
       "status_codes": [
         404,
@@ -1170,11 +1447,10 @@
     }
   },
   {
-    "type": "RATE_LIMIT_MISSING",
-    "severity": "HIGH",
-    "detail": "No rate limiting detected after 50 rapid requests",
+    "type": "RATE_LIMIT",
+    "severity": "MEDIUM",
+    "detail": "No rate limiting detected after sending multiple rapid requests",
     "evidence": {
-      "url": "http://localhost:5002/console/books/v1",
       "request_count": 50,
       "status_codes": [
         404,
@@ -1231,11 +1507,10 @@
     }
   },
   {
-    "type": "RATE_LIMIT_MISSING",
-    "severity": "HIGH",
-    "detail": "No rate limiting detected after 50 rapid requests",
+    "type": "RATE_LIMIT",
+    "severity": "MEDIUM",
+    "detail": "No rate limiting detected after sending multiple rapid requests",
     "evidence": {
-      "url": "http://localhost:5002/console/books/v1",
       "request_count": 50,
       "status_codes": [
         404,
@@ -1292,11 +1567,10 @@
     }
   },
   {
-    "type": "RATE_LIMIT_MISSING",
-    "severity": "HIGH",
-    "detail": "No rate limiting detected after 50 rapid requests",
+    "type": "RATE_LIMIT",
+    "severity": "MEDIUM",
+    "detail": "No rate limiting detected after sending multiple rapid requests",
     "evidence": {
-      "url": "http://localhost:5002/createdb/books/v1",
       "request_count": 50,
       "status_codes": [
         404,
@@ -1353,11 +1627,10 @@
     }
   },
   {
-    "type": "RATE_LIMIT_MISSING",
-    "severity": "HIGH",
-    "detail": "No rate limiting detected after 50 rapid requests",
+    "type": "RATE_LIMIT",
+    "severity": "MEDIUM",
+    "detail": "No rate limiting detected after sending multiple rapid requests",
     "evidence": {
-      "url": "http://localhost:5002/createdb/books/v1",
       "request_count": 50,
       "status_codes": [
         404,
@@ -1414,11 +1687,10 @@
     }
   },
   {
-    "type": "RATE_LIMIT_MISSING",
-    "severity": "HIGH",
-    "detail": "No rate limiting detected after 50 rapid requests",
+    "type": "RATE_LIMIT",
+    "severity": "MEDIUM",
+    "detail": "No rate limiting detected after sending multiple rapid requests",
     "evidence": {
-      "url": "http://localhost:5002/createdb/books/v1",
       "request_count": 50,
       "status_codes": [
         404,
@@ -1475,11 +1747,10 @@
     }
   },
   {
-    "type": "RATE_LIMIT_MISSING",
-    "severity": "HIGH",
-    "detail": "No rate limiting detected after 50 rapid requests",
+    "type": "RATE_LIMIT",
+    "severity": "MEDIUM",
+    "detail": "No rate limiting detected after sending multiple rapid requests",
     "evidence": {
-      "url": "http://localhost:5002/createdb/books/v1",
       "request_count": 50,
       "status_codes": [
         404,
@@ -1536,11 +1807,10 @@
     }
   },
   {
-    "type": "RATE_LIMIT_MISSING",
-    "severity": "HIGH",
-    "detail": "No rate limiting detected after 50 rapid requests",
+    "type": "RATE_LIMIT",
+    "severity": "MEDIUM",
+    "detail": "No rate limiting detected after sending multiple rapid requests",
     "evidence": {
-      "url": "http://localhost:5002/createdb/books/v1",
       "request_count": 50,
       "status_codes": [
         404,
@@ -1597,11 +1867,10 @@
     }
   },
   {
-    "type": "RATE_LIMIT_MISSING",
-    "severity": "HIGH",
-    "detail": "No rate limiting detected after 50 rapid requests",
+    "type": "RATE_LIMIT",
+    "severity": "MEDIUM",
+    "detail": "No rate limiting detected after sending multiple rapid requests",
     "evidence": {
-      "url": "http://localhost:5002/me/books/v1",
       "request_count": 50,
       "status_codes": [
         404,
@@ -1658,11 +1927,10 @@
     }
   },
   {
-    "type": "RATE_LIMIT_MISSING",
-    "severity": "HIGH",
-    "detail": "No rate limiting detected after 50 rapid requests",
+    "type": "RATE_LIMIT",
+    "severity": "MEDIUM",
+    "detail": "No rate limiting detected after sending multiple rapid requests",
     "evidence": {
-      "url": "http://localhost:5002/me/books/v1",
       "request_count": 50,
       "status_codes": [
         404,
@@ -1719,11 +1987,10 @@
     }
   },
   {
-    "type": "RATE_LIMIT_MISSING",
-    "severity": "HIGH",
-    "detail": "No rate limiting detected after 50 rapid requests",
+    "type": "RATE_LIMIT",
+    "severity": "MEDIUM",
+    "detail": "No rate limiting detected after sending multiple rapid requests",
     "evidence": {
-      "url": "http://localhost:5002/me/books/v1",
       "request_count": 50,
       "status_codes": [
         404,
@@ -1780,11 +2047,10 @@
     }
   },
   {
-    "type": "RATE_LIMIT_MISSING",
-    "severity": "HIGH",
-    "detail": "No rate limiting detected after 50 rapid requests",
+    "type": "RATE_LIMIT",
+    "severity": "MEDIUM",
+    "detail": "No rate limiting detected after sending multiple rapid requests",
     "evidence": {
-      "url": "http://localhost:5002/me/books/v1",
       "request_count": 50,
       "status_codes": [
         404,
@@ -1841,11 +2107,10 @@
     }
   },
   {
-    "type": "RATE_LIMIT_MISSING",
-    "severity": "HIGH",
-    "detail": "No rate limiting detected after 50 rapid requests",
+    "type": "RATE_LIMIT",
+    "severity": "MEDIUM",
+    "detail": "No rate limiting detected after sending multiple rapid requests",
     "evidence": {
-      "url": "http://localhost:5002/me/books/v1",
       "request_count": 50,
       "status_codes": [
         404,
@@ -1902,11 +2167,10 @@
     }
   },
   {
-    "type": "RATE_LIMIT_MISSING",
-    "severity": "HIGH",
-    "detail": "No rate limiting detected after 50 rapid requests",
+    "type": "RATE_LIMIT",
+    "severity": "MEDIUM",
+    "detail": "No rate limiting detected after sending multiple rapid requests",
     "evidence": {
-      "url": "http://localhost:5002/users/v1/books/v1",
       "request_count": 50,
       "status_codes": [
         404,
@@ -1963,11 +2227,10 @@
     }
   },
   {
-    "type": "RATE_LIMIT_MISSING",
-    "severity": "HIGH",
-    "detail": "No rate limiting detected after 50 rapid requests",
+    "type": "RATE_LIMIT",
+    "severity": "MEDIUM",
+    "detail": "No rate limiting detected after sending multiple rapid requests",
     "evidence": {
-      "url": "http://localhost:5002/users/v1/books/v1",
       "request_count": 50,
       "status_codes": [
         404,
@@ -2024,11 +2287,10 @@
     }
   },
   {
-    "type": "RATE_LIMIT_MISSING",
-    "severity": "HIGH",
-    "detail": "No rate limiting detected after 50 rapid requests",
+    "type": "RATE_LIMIT",
+    "severity": "MEDIUM",
+    "detail": "No rate limiting detected after sending multiple rapid requests",
     "evidence": {
-      "url": "http://localhost:5002/users/v1/books/v1",
       "request_count": 50,
       "status_codes": [
         404,
@@ -2085,11 +2347,10 @@
     }
   },
   {
-    "type": "RATE_LIMIT_MISSING",
-    "severity": "HIGH",
-    "detail": "No rate limiting detected after 50 rapid requests",
+    "type": "RATE_LIMIT",
+    "severity": "MEDIUM",
+    "detail": "No rate limiting detected after sending multiple rapid requests",
     "evidence": {
-      "url": "http://localhost:5002/users/v1/books/v1",
       "request_count": 50,
       "status_codes": [
         404,
@@ -2146,11 +2407,10 @@
     }
   },
   {
-    "type": "RATE_LIMIT_MISSING",
-    "severity": "HIGH",
-    "detail": "No rate limiting detected after 50 rapid requests",
+    "type": "RATE_LIMIT",
+    "severity": "MEDIUM",
+    "detail": "No rate limiting detected after sending multiple rapid requests",
     "evidence": {
-      "url": "http://localhost:5002/users/v1/books/v1",
       "request_count": 50,
       "status_codes": [
         404,
@@ -2207,11 +2467,10 @@
     }
   },
   {
-    "type": "RATE_LIMIT_MISSING",
-    "severity": "HIGH",
-    "detail": "No rate limiting detected after 50 rapid requests",
+    "type": "RATE_LIMIT",
+    "severity": "MEDIUM",
+    "detail": "No rate limiting detected after sending multiple rapid requests",
     "evidence": {
-      "url": "http://localhost:5002/users/v1/_debug/books/v1",
       "request_count": 50,
       "status_codes": [
         404,
@@ -2268,11 +2527,10 @@
     }
   },
   {
-    "type": "RATE_LIMIT_MISSING",
-    "severity": "HIGH",
-    "detail": "No rate limiting detected after 50 rapid requests",
+    "type": "RATE_LIMIT",
+    "severity": "MEDIUM",
+    "detail": "No rate limiting detected after sending multiple rapid requests",
     "evidence": {
-      "url": "http://localhost:5002/users/v1/_debug/books/v1",
       "request_count": 50,
       "status_codes": [
         404,
@@ -2329,11 +2587,10 @@
     }
   },
   {
-    "type": "RATE_LIMIT_MISSING",
-    "severity": "HIGH",
-    "detail": "No rate limiting detected after 50 rapid requests",
+    "type": "RATE_LIMIT",
+    "severity": "MEDIUM",
+    "detail": "No rate limiting detected after sending multiple rapid requests",
     "evidence": {
-      "url": "http://localhost:5002/users/v1/_debug/books/v1",
       "request_count": 50,
       "status_codes": [
         404,
@@ -2390,11 +2647,10 @@
     }
   },
   {
-    "type": "RATE_LIMIT_MISSING",
-    "severity": "HIGH",
-    "detail": "No rate limiting detected after 50 rapid requests",
+    "type": "RATE_LIMIT",
+    "severity": "MEDIUM",
+    "detail": "No rate limiting detected after sending multiple rapid requests",
     "evidence": {
-      "url": "http://localhost:5002/users/v1/_debug/books/v1",
       "request_count": 50,
       "status_codes": [
         404,
@@ -2451,11 +2707,10 @@
     }
   },
   {
-    "type": "RATE_LIMIT_MISSING",
-    "severity": "HIGH",
-    "detail": "No rate limiting detected after 50 rapid requests",
+    "type": "RATE_LIMIT",
+    "severity": "MEDIUM",
+    "detail": "No rate limiting detected after sending multiple rapid requests",
     "evidence": {
-      "url": "http://localhost:5002/users/v1/_debug/books/v1",
       "request_count": 50,
       "status_codes": [
         404,
@@ -2512,11 +2767,10 @@
     }
   },
   {
-    "type": "RATE_LIMIT_MISSING",
-    "severity": "HIGH",
-    "detail": "No rate limiting detected after 50 rapid requests",
+    "type": "RATE_LIMIT",
+    "severity": "MEDIUM",
+    "detail": "No rate limiting detected after sending multiple rapid requests",
     "evidence": {
-      "url": "http://localhost:5002/users/v1/{book_id}/email/books/v1",
       "request_count": 50,
       "status_codes": [
         404,
@@ -2573,11 +2827,10 @@
     }
   },
   {
-    "type": "RATE_LIMIT_MISSING",
-    "severity": "HIGH",
-    "detail": "No rate limiting detected after 50 rapid requests",
+    "type": "RATE_LIMIT",
+    "severity": "MEDIUM",
+    "detail": "No rate limiting detected after sending multiple rapid requests",
     "evidence": {
-      "url": "http://localhost:5002/users/v1/{book_id}/email/books/v1",
       "request_count": 50,
       "status_codes": [
         404,
@@ -2634,11 +2887,10 @@
     }
   },
   {
-    "type": "RATE_LIMIT_MISSING",
-    "severity": "HIGH",
-    "detail": "No rate limiting detected after 50 rapid requests",
+    "type": "RATE_LIMIT",
+    "severity": "MEDIUM",
+    "detail": "No rate limiting detected after sending multiple rapid requests",
     "evidence": {
-      "url": "http://localhost:5002/users/v1/{book_id}/email/books/v1",
       "request_count": 50,
       "status_codes": [
         404,
@@ -2695,11 +2947,10 @@
     }
   },
   {
-    "type": "RATE_LIMIT_MISSING",
-    "severity": "HIGH",
-    "detail": "No rate limiting detected after 50 rapid requests",
+    "type": "RATE_LIMIT",
+    "severity": "MEDIUM",
+    "detail": "No rate limiting detected after sending multiple rapid requests",
     "evidence": {
-      "url": "http://localhost:5002/users/v1/{book_id}/email/books/v1",
       "request_count": 50,
       "status_codes": [
         404,
@@ -2756,11 +3007,10 @@
     }
   },
   {
-    "type": "RATE_LIMIT_MISSING",
-    "severity": "HIGH",
-    "detail": "No rate limiting detected after 50 rapid requests",
+    "type": "RATE_LIMIT",
+    "severity": "MEDIUM",
+    "detail": "No rate limiting detected after sending multiple rapid requests",
     "evidence": {
-      "url": "http://localhost:5002/users/v1/{book_id}/email/books/v1",
       "request_count": 50,
       "status_codes": [
         404,
@@ -2817,11 +3067,10 @@
     }
   },
   {
-    "type": "RATE_LIMIT_MISSING",
-    "severity": "HIGH",
-    "detail": "No rate limiting detected after 50 rapid requests",
+    "type": "RATE_LIMIT",
+    "severity": "MEDIUM",
+    "detail": "No rate limiting detected after sending multiple rapid requests",
     "evidence": {
-      "url": "http://localhost:5002/users/v1/{book_id}/password/books/v1",
       "request_count": 50,
       "status_codes": [
         404,
@@ -2878,11 +3127,10 @@
     }
   },
   {
-    "type": "RATE_LIMIT_MISSING",
-    "severity": "HIGH",
-    "detail": "No rate limiting detected after 50 rapid requests",
+    "type": "RATE_LIMIT",
+    "severity": "MEDIUM",
+    "detail": "No rate limiting detected after sending multiple rapid requests",
     "evidence": {
-      "url": "http://localhost:5002/users/v1/{book_id}/password/books/v1",
       "request_count": 50,
       "status_codes": [
         404,
@@ -2939,11 +3187,10 @@
     }
   },
   {
-    "type": "RATE_LIMIT_MISSING",
-    "severity": "HIGH",
-    "detail": "No rate limiting detected after 50 rapid requests",
+    "type": "RATE_LIMIT",
+    "severity": "MEDIUM",
+    "detail": "No rate limiting detected after sending multiple rapid requests",
     "evidence": {
-      "url": "http://localhost:5002/users/v1/{book_id}/password/books/v1",
       "request_count": 50,
       "status_codes": [
         404,
@@ -3000,11 +3247,10 @@
     }
   },
   {
-    "type": "RATE_LIMIT_MISSING",
-    "severity": "HIGH",
-    "detail": "No rate limiting detected after 50 rapid requests",
+    "type": "RATE_LIMIT",
+    "severity": "MEDIUM",
+    "detail": "No rate limiting detected after sending multiple rapid requests",
     "evidence": {
-      "url": "http://localhost:5002/users/v1/{book_id}/password/books/v1",
       "request_count": 50,
       "status_codes": [
         404,
@@ -3061,11 +3307,10 @@
     }
   },
   {
-    "type": "RATE_LIMIT_MISSING",
-    "severity": "HIGH",
-    "detail": "No rate limiting detected after 50 rapid requests",
+    "type": "RATE_LIMIT",
+    "severity": "MEDIUM",
+    "detail": "No rate limiting detected after sending multiple rapid requests",
     "evidence": {
-      "url": "http://localhost:5002/users/v1/{book_id}/password/books/v1",
       "request_count": 50,
       "status_codes": [
         404,
@@ -3122,11 +3367,10 @@
     }
   },
   {
-    "type": "RATE_LIMIT_MISSING",
-    "severity": "HIGH",
-    "detail": "No rate limiting detected after 50 rapid requests",
+    "type": "RATE_LIMIT",
+    "severity": "MEDIUM",
+    "detail": "No rate limiting detected after sending multiple rapid requests",
     "evidence": {
-      "url": "http://localhost:5002/users/v1/{email}/email/books/v1",
       "request_count": 50,
       "status_codes": [
         404,
@@ -3183,11 +3427,10 @@
     }
   },
   {
-    "type": "RATE_LIMIT_MISSING",
-    "severity": "HIGH",
-    "detail": "No rate limiting detected after 50 rapid requests",
+    "type": "RATE_LIMIT",
+    "severity": "MEDIUM",
+    "detail": "No rate limiting detected after sending multiple rapid requests",
     "evidence": {
-      "url": "http://localhost:5002/users/v1/{email}/email/books/v1",
       "request_count": 50,
       "status_codes": [
         404,
@@ -3244,11 +3487,10 @@
     }
   },
   {
-    "type": "RATE_LIMIT_MISSING",
-    "severity": "HIGH",
-    "detail": "No rate limiting detected after 50 rapid requests",
+    "type": "RATE_LIMIT",
+    "severity": "MEDIUM",
+    "detail": "No rate limiting detected after sending multiple rapid requests",
     "evidence": {
-      "url": "http://localhost:5002/users/v1/{email}/email/books/v1",
       "request_count": 50,
       "status_codes": [
         404,
@@ -3305,11 +3547,10 @@
     }
   },
   {
-    "type": "RATE_LIMIT_MISSING",
-    "severity": "HIGH",
-    "detail": "No rate limiting detected after 50 rapid requests",
+    "type": "RATE_LIMIT",
+    "severity": "MEDIUM",
+    "detail": "No rate limiting detected after sending multiple rapid requests",
     "evidence": {
-      "url": "http://localhost:5002/users/v1/{email}/email/books/v1",
       "request_count": 50,
       "status_codes": [
         404,
@@ -3366,11 +3607,10 @@
     }
   },
   {
-    "type": "RATE_LIMIT_MISSING",
-    "severity": "HIGH",
-    "detail": "No rate limiting detected after 50 rapid requests",
+    "type": "RATE_LIMIT",
+    "severity": "MEDIUM",
+    "detail": "No rate limiting detected after sending multiple rapid requests",
     "evidence": {
-      "url": "http://localhost:5002/users/v1/{email}/email/books/v1",
       "request_count": 50,
       "status_codes": [
         404,
@@ -3427,11 +3667,10 @@
     }
   },
   {
-    "type": "RATE_LIMIT_MISSING",
-    "severity": "HIGH",
-    "detail": "No rate limiting detected after 50 rapid requests",
+    "type": "RATE_LIMIT",
+    "severity": "MEDIUM",
+    "detail": "No rate limiting detected after sending multiple rapid requests",
     "evidence": {
-      "url": "http://localhost:5002/users/v1/{email}/password/books/v1",
       "request_count": 50,
       "status_codes": [
         404,
@@ -3488,11 +3727,10 @@
     }
   },
   {
-    "type": "RATE_LIMIT_MISSING",
-    "severity": "HIGH",
-    "detail": "No rate limiting detected after 50 rapid requests",
+    "type": "RATE_LIMIT",
+    "severity": "MEDIUM",
+    "detail": "No rate limiting detected after sending multiple rapid requests",
     "evidence": {
-      "url": "http://localhost:5002/users/v1/{email}/password/books/v1",
       "request_count": 50,
       "status_codes": [
         404,
@@ -3549,11 +3787,10 @@
     }
   },
   {
-    "type": "RATE_LIMIT_MISSING",
-    "severity": "HIGH",
-    "detail": "No rate limiting detected after 50 rapid requests",
+    "type": "RATE_LIMIT",
+    "severity": "MEDIUM",
+    "detail": "No rate limiting detected after sending multiple rapid requests",
     "evidence": {
-      "url": "http://localhost:5002/users/v1/{email}/password/books/v1",
       "request_count": 50,
       "status_codes": [
         404,
@@ -3610,11 +3847,10 @@
     }
   },
   {
-    "type": "RATE_LIMIT_MISSING",
-    "severity": "HIGH",
-    "detail": "No rate limiting detected after 50 rapid requests",
+    "type": "RATE_LIMIT",
+    "severity": "MEDIUM",
+    "detail": "No rate limiting detected after sending multiple rapid requests",
     "evidence": {
-      "url": "http://localhost:5002/users/v1/{email}/password/books/v1",
       "request_count": 50,
       "status_codes": [
         404,
@@ -3671,11 +3907,10 @@
     }
   },
   {
-    "type": "RATE_LIMIT_MISSING",
-    "severity": "HIGH",
-    "detail": "No rate limiting detected after 50 rapid requests",
+    "type": "RATE_LIMIT",
+    "severity": "MEDIUM",
+    "detail": "No rate limiting detected after sending multiple rapid requests",
     "evidence": {
-      "url": "http://localhost:5002/users/v1/{email}/password/books/v1",
       "request_count": 50,
       "status_codes": [
         404,
@@ -3732,11 +3967,10 @@
     }
   },
   {
-    "type": "RATE_LIMIT_MISSING",
-    "severity": "HIGH",
-    "detail": "No rate limiting detected after 50 rapid requests",
+    "type": "RATE_LIMIT",
+    "severity": "MEDIUM",
+    "detail": "No rate limiting detected after sending multiple rapid requests",
     "evidence": {
-      "url": "http://localhost:5002/users/v1/{id}/email/books/v1",
       "request_count": 50,
       "status_codes": [
         404,
@@ -3793,11 +4027,10 @@
     }
   },
   {
-    "type": "RATE_LIMIT_MISSING",
-    "severity": "HIGH",
-    "detail": "No rate limiting detected after 50 rapid requests",
+    "type": "RATE_LIMIT",
+    "severity": "MEDIUM",
+    "detail": "No rate limiting detected after sending multiple rapid requests",
     "evidence": {
-      "url": "http://localhost:5002/users/v1/{id}/email/books/v1",
       "request_count": 50,
       "status_codes": [
         404,
@@ -3854,11 +4087,10 @@
     }
   },
   {
-    "type": "RATE_LIMIT_MISSING",
-    "severity": "HIGH",
-    "detail": "No rate limiting detected after 50 rapid requests",
+    "type": "RATE_LIMIT",
+    "severity": "MEDIUM",
+    "detail": "No rate limiting detected after sending multiple rapid requests",
     "evidence": {
-      "url": "http://localhost:5002/users/v1/{id}/email/books/v1",
       "request_count": 50,
       "status_codes": [
         404,
@@ -3915,11 +4147,10 @@
     }
   },
   {
-    "type": "RATE_LIMIT_MISSING",
-    "severity": "HIGH",
-    "detail": "No rate limiting detected after 50 rapid requests",
+    "type": "RATE_LIMIT",
+    "severity": "MEDIUM",
+    "detail": "No rate limiting detected after sending multiple rapid requests",
     "evidence": {
-      "url": "http://localhost:5002/users/v1/{id}/email/books/v1",
       "request_count": 50,
       "status_codes": [
         404,
@@ -3976,11 +4207,10 @@
     }
   },
   {
-    "type": "RATE_LIMIT_MISSING",
-    "severity": "HIGH",
-    "detail": "No rate limiting detected after 50 rapid requests",
+    "type": "RATE_LIMIT",
+    "severity": "MEDIUM",
+    "detail": "No rate limiting detected after sending multiple rapid requests",
     "evidence": {
-      "url": "http://localhost:5002/users/v1/{id}/email/books/v1",
       "request_count": 50,
       "status_codes": [
         404,
@@ -4037,11 +4267,10 @@
     }
   },
   {
-    "type": "RATE_LIMIT_MISSING",
-    "severity": "HIGH",
-    "detail": "No rate limiting detected after 50 rapid requests",
+    "type": "RATE_LIMIT",
+    "severity": "MEDIUM",
+    "detail": "No rate limiting detected after sending multiple rapid requests",
     "evidence": {
-      "url": "http://localhost:5002/users/v1/{id}/password/books/v1",
       "request_count": 50,
       "status_codes": [
         404,
@@ -4098,11 +4327,10 @@
     }
   },
   {
-    "type": "RATE_LIMIT_MISSING",
-    "severity": "HIGH",
-    "detail": "No rate limiting detected after 50 rapid requests",
+    "type": "RATE_LIMIT",
+    "severity": "MEDIUM",
+    "detail": "No rate limiting detected after sending multiple rapid requests",
     "evidence": {
-      "url": "http://localhost:5002/users/v1/{id}/password/books/v1",
       "request_count": 50,
       "status_codes": [
         404,
@@ -4159,11 +4387,10 @@
     }
   },
   {
-    "type": "RATE_LIMIT_MISSING",
-    "severity": "HIGH",
-    "detail": "No rate limiting detected after 50 rapid requests",
+    "type": "RATE_LIMIT",
+    "severity": "MEDIUM",
+    "detail": "No rate limiting detected after sending multiple rapid requests",
     "evidence": {
-      "url": "http://localhost:5002/users/v1/{id}/password/books/v1",
       "request_count": 50,
       "status_codes": [
         404,
@@ -4220,11 +4447,10 @@
     }
   },
   {
-    "type": "RATE_LIMIT_MISSING",
-    "severity": "HIGH",
-    "detail": "No rate limiting detected after 50 rapid requests",
+    "type": "RATE_LIMIT",
+    "severity": "MEDIUM",
+    "detail": "No rate limiting detected after sending multiple rapid requests",
     "evidence": {
-      "url": "http://localhost:5002/users/v1/{id}/password/books/v1",
       "request_count": 50,
       "status_codes": [
         404,
@@ -4281,11 +4507,10 @@
     }
   },
   {
-    "type": "RATE_LIMIT_MISSING",
-    "severity": "HIGH",
-    "detail": "No rate limiting detected after 50 rapid requests",
+    "type": "RATE_LIMIT",
+    "severity": "MEDIUM",
+    "detail": "No rate limiting detected after sending multiple rapid requests",
     "evidence": {
-      "url": "http://localhost:5002/users/v1/{id}/password/books/v1",
       "request_count": 50,
       "status_codes": [
         404,
@@ -4342,11 +4567,10 @@
     }
   },
   {
-    "type": "RATE_LIMIT_MISSING",
-    "severity": "HIGH",
-    "detail": "No rate limiting detected after 50 rapid requests",
+    "type": "RATE_LIMIT",
+    "severity": "MEDIUM",
+    "detail": "No rate limiting detected after sending multiple rapid requests",
     "evidence": {
-      "url": "http://localhost:5002/users/v1/{password}/email/books/v1",
       "request_count": 50,
       "status_codes": [
         404,
@@ -4403,11 +4627,10 @@
     }
   },
   {
-    "type": "RATE_LIMIT_MISSING",
-    "severity": "HIGH",
-    "detail": "No rate limiting detected after 50 rapid requests",
+    "type": "RATE_LIMIT",
+    "severity": "MEDIUM",
+    "detail": "No rate limiting detected after sending multiple rapid requests",
     "evidence": {
-      "url": "http://localhost:5002/users/v1/{password}/email/books/v1",
       "request_count": 50,
       "status_codes": [
         404,
@@ -4464,11 +4687,10 @@
     }
   },
   {
-    "type": "RATE_LIMIT_MISSING",
-    "severity": "HIGH",
-    "detail": "No rate limiting detected after 50 rapid requests",
+    "type": "RATE_LIMIT",
+    "severity": "MEDIUM",
+    "detail": "No rate limiting detected after sending multiple rapid requests",
     "evidence": {
-      "url": "http://localhost:5002/users/v1/{password}/email/books/v1",
       "request_count": 50,
       "status_codes": [
         404,
@@ -4525,11 +4747,10 @@
     }
   },
   {
-    "type": "RATE_LIMIT_MISSING",
-    "severity": "HIGH",
-    "detail": "No rate limiting detected after 50 rapid requests",
+    "type": "RATE_LIMIT",
+    "severity": "MEDIUM",
+    "detail": "No rate limiting detected after sending multiple rapid requests",
     "evidence": {
-      "url": "http://localhost:5002/users/v1/{password}/email/books/v1",
       "request_count": 50,
       "status_codes": [
         404,
@@ -4586,11 +4807,10 @@
     }
   },
   {
-    "type": "RATE_LIMIT_MISSING",
-    "severity": "HIGH",
-    "detail": "No rate limiting detected after 50 rapid requests",
+    "type": "RATE_LIMIT",
+    "severity": "MEDIUM",
+    "detail": "No rate limiting detected after sending multiple rapid requests",
     "evidence": {
-      "url": "http://localhost:5002/users/v1/{password}/email/books/v1",
       "request_count": 50,
       "status_codes": [
         404,
@@ -4647,11 +4867,10 @@
     }
   },
   {
-    "type": "RATE_LIMIT_MISSING",
-    "severity": "HIGH",
-    "detail": "No rate limiting detected after 50 rapid requests",
+    "type": "RATE_LIMIT",
+    "severity": "MEDIUM",
+    "detail": "No rate limiting detected after sending multiple rapid requests",
     "evidence": {
-      "url": "http://localhost:5002/users/v1/{password}/password/books/v1",
       "request_count": 50,
       "status_codes": [
         404,
@@ -4708,11 +4927,10 @@
     }
   },
   {
-    "type": "RATE_LIMIT_MISSING",
-    "severity": "HIGH",
-    "detail": "No rate limiting detected after 50 rapid requests",
+    "type": "RATE_LIMIT",
+    "severity": "MEDIUM",
+    "detail": "No rate limiting detected after sending multiple rapid requests",
     "evidence": {
-      "url": "http://localhost:5002/users/v1/{password}/password/books/v1",
       "request_count": 50,
       "status_codes": [
         404,
@@ -4769,11 +4987,10 @@
     }
   },
   {
-    "type": "RATE_LIMIT_MISSING",
-    "severity": "HIGH",
-    "detail": "No rate limiting detected after 50 rapid requests",
+    "type": "RATE_LIMIT",
+    "severity": "MEDIUM",
+    "detail": "No rate limiting detected after sending multiple rapid requests",
     "evidence": {
-      "url": "http://localhost:5002/users/v1/{password}/password/books/v1",
       "request_count": 50,
       "status_codes": [
         404,
@@ -4830,11 +5047,10 @@
     }
   },
   {
-    "type": "RATE_LIMIT_MISSING",
-    "severity": "HIGH",
-    "detail": "No rate limiting detected after 50 rapid requests",
+    "type": "RATE_LIMIT",
+    "severity": "MEDIUM",
+    "detail": "No rate limiting detected after sending multiple rapid requests",
     "evidence": {
-      "url": "http://localhost:5002/users/v1/{password}/password/books/v1",
       "request_count": 50,
       "status_codes": [
         404,
@@ -4891,11 +5107,10 @@
     }
   },
   {
-    "type": "RATE_LIMIT_MISSING",
-    "severity": "HIGH",
-    "detail": "No rate limiting detected after 50 rapid requests",
+    "type": "RATE_LIMIT",
+    "severity": "MEDIUM",
+    "detail": "No rate limiting detected after sending multiple rapid requests",
     "evidence": {
-      "url": "http://localhost:5002/users/v1/{password}/password/books/v1",
       "request_count": 50,
       "status_codes": [
         404,
@@ -4952,11 +5167,10 @@
     }
   },
   {
-    "type": "RATE_LIMIT_MISSING",
-    "severity": "HIGH",
-    "detail": "No rate limiting detected after 50 rapid requests",
+    "type": "RATE_LIMIT",
+    "severity": "MEDIUM",
+    "detail": "No rate limiting detected after sending multiple rapid requests",
     "evidence": {
-      "url": "http://localhost:5002/users/v1/{username}/email/books/v1",
       "request_count": 50,
       "status_codes": [
         404,
@@ -5013,11 +5227,10 @@
     }
   },
   {
-    "type": "RATE_LIMIT_MISSING",
-    "severity": "HIGH",
-    "detail": "No rate limiting detected after 50 rapid requests",
+    "type": "RATE_LIMIT",
+    "severity": "MEDIUM",
+    "detail": "No rate limiting detected after sending multiple rapid requests",
     "evidence": {
-      "url": "http://localhost:5002/users/v1/{username}/email/books/v1",
       "request_count": 50,
       "status_codes": [
         404,
@@ -5074,11 +5287,10 @@
     }
   },
   {
-    "type": "RATE_LIMIT_MISSING",
-    "severity": "HIGH",
-    "detail": "No rate limiting detected after 50 rapid requests",
+    "type": "RATE_LIMIT",
+    "severity": "MEDIUM",
+    "detail": "No rate limiting detected after sending multiple rapid requests",
     "evidence": {
-      "url": "http://localhost:5002/users/v1/{username}/email/books/v1",
       "request_count": 50,
       "status_codes": [
         404,
@@ -5135,11 +5347,10 @@
     }
   },
   {
-    "type": "RATE_LIMIT_MISSING",
-    "severity": "HIGH",
-    "detail": "No rate limiting detected after 50 rapid requests",
+    "type": "RATE_LIMIT",
+    "severity": "MEDIUM",
+    "detail": "No rate limiting detected after sending multiple rapid requests",
     "evidence": {
-      "url": "http://localhost:5002/users/v1/{username}/email/books/v1",
       "request_count": 50,
       "status_codes": [
         404,
@@ -5196,11 +5407,10 @@
     }
   },
   {
-    "type": "RATE_LIMIT_MISSING",
-    "severity": "HIGH",
-    "detail": "No rate limiting detected after 50 rapid requests",
+    "type": "RATE_LIMIT",
+    "severity": "MEDIUM",
+    "detail": "No rate limiting detected after sending multiple rapid requests",
     "evidence": {
-      "url": "http://localhost:5002/users/v1/{username}/email/books/v1",
       "request_count": 50,
       "status_codes": [
         404,
@@ -5257,11 +5467,10 @@
     }
   },
   {
-    "type": "RATE_LIMIT_MISSING",
-    "severity": "HIGH",
-    "detail": "No rate limiting detected after 50 rapid requests",
+    "type": "RATE_LIMIT",
+    "severity": "MEDIUM",
+    "detail": "No rate limiting detected after sending multiple rapid requests",
     "evidence": {
-      "url": "http://localhost:5002/users/v1/{username}/password/books/v1",
       "request_count": 50,
       "status_codes": [
         404,
@@ -5318,11 +5527,10 @@
     }
   },
   {
-    "type": "RATE_LIMIT_MISSING",
-    "severity": "HIGH",
-    "detail": "No rate limiting detected after 50 rapid requests",
+    "type": "RATE_LIMIT",
+    "severity": "MEDIUM",
+    "detail": "No rate limiting detected after sending multiple rapid requests",
     "evidence": {
-      "url": "http://localhost:5002/users/v1/{username}/password/books/v1",
       "request_count": 50,
       "status_codes": [
         404,
@@ -5379,11 +5587,10 @@
     }
   },
   {
-    "type": "RATE_LIMIT_MISSING",
-    "severity": "HIGH",
-    "detail": "No rate limiting detected after 50 rapid requests",
+    "type": "RATE_LIMIT",
+    "severity": "MEDIUM",
+    "detail": "No rate limiting detected after sending multiple rapid requests",
     "evidence": {
-      "url": "http://localhost:5002/users/v1/{username}/password/books/v1",
       "request_count": 50,
       "status_codes": [
         404,
@@ -5440,11 +5647,10 @@
     }
   },
   {
-    "type": "RATE_LIMIT_MISSING",
-    "severity": "HIGH",
-    "detail": "No rate limiting detected after 50 rapid requests",
+    "type": "RATE_LIMIT",
+    "severity": "MEDIUM",
+    "detail": "No rate limiting detected after sending multiple rapid requests",
     "evidence": {
-      "url": "http://localhost:5002/users/v1/{username}/password/books/v1",
       "request_count": 50,
       "status_codes": [
         404,
@@ -5501,11 +5707,10 @@
     }
   },
   {
-    "type": "RATE_LIMIT_MISSING",
-    "severity": "HIGH",
-    "detail": "No rate limiting detected after 50 rapid requests",
+    "type": "RATE_LIMIT",
+    "severity": "MEDIUM",
+    "detail": "No rate limiting detected after sending multiple rapid requests",
     "evidence": {
-      "url": "http://localhost:5002/users/v1/{username}/password/books/v1",
       "request_count": 50,
       "status_codes": [
         404,
