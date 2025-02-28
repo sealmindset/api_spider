@@ -23,6 +23,7 @@ from RAGScripts.RAG_UserPass import UserPassEnumScanner
 from RAGScripts.RAG_RegexDoS import RegexDOSScanner
 from RAGScripts.RAG_Rate import RateLimitScanner
 from RAGScripts.RAG_jwt_bypass import JWTBypassScanner
+from RAGScripts.utils.auth_handler import AuthHandler
 
 def setup_logging(verbosity: int = 1) -> logging.Logger:
     logger = logging.getLogger('api_security_scanner')
@@ -129,6 +130,11 @@ class APISecurityScanner:
         self.headers = {}
         self.findings = []  # Initialize findings list
         self.time_module = time  # Initialize time module as instance variable
+        self.auth_handler = AuthHandler()
+        
+        # Extract security schemes and generate headers
+        security_schemes = self.auth_handler.extract_security_schemes(self.spec)
+        self.headers.update(self.auth_handler.generate_auth_headers(security_schemes, token))
         
         # Initialize credential harvester and try to get admin token first
         self.harvester = CredentialHarvester(target_url, self.logger)
@@ -140,12 +146,10 @@ class APISecurityScanner:
                 token = self.harvester.generate_admin_token()
                 if token:
                     self.logger.info("Successfully generated admin token")
+                    # Update headers with the new token
+                    self.headers.update(self.auth_handler.generate_auth_headers(security_schemes, token))
                 else:
                     self.logger.warning("Failed to generate admin token")
-        
-        if token:
-            self.headers['Authorization'] = f'Bearer {token}'
-            self.logger.info("Using bearer token for authenticated requests")
         
         # Initialize security checks after token is set
         self.security_checks = [
@@ -161,30 +165,6 @@ class APISecurityScanner:
         ]
         self.logger.info(f"Loaded {len(self.security_checks)} security scanners")
 
-    def run(self) -> List[Dict]:
-        start_time = time.time()
-        self.logger.info(f"Starting security scan of {self.target_url}")
-
-        try:
-            api_findings = self.scan_api()
-            # Combine credential exposure findings with API scan findings
-            all_findings = self.findings + api_findings
-            elapsed = time.time() - start_time
-            self.logger.info(f"Scan completed in {elapsed:.2f}s with {len(all_findings)} findings")
-            return all_findings
-
-        except Exception as e:
-            self.logger.error(f"Scan failed: {str(e)}")
-            raise
-
-    def _load_spec(self) -> Dict:
-        try:
-            with open(self.spec_file, 'r') as f:
-                return yaml.safe_load(f)
-        except Exception as e:
-            self.logger.error(f"Error loading spec file: {str(e)}")
-            raise
-
     def scan_endpoint(self, path: str, methods: Dict[str, Any]) -> List[Dict]:
         findings = []
         try:
@@ -192,6 +172,9 @@ class APISecurityScanner:
 
             for method, details in methods.items():
                 self.logger.info(f"Scanning endpoint: {method} {endpoint_url}")
+                
+                # Get endpoint-specific security requirements
+                endpoint_security = self.auth_handler.get_endpoint_security(self.spec, path, method)
                 
                 try:
                     response = requests.request(method, endpoint_url, headers=self.headers)
@@ -203,7 +186,8 @@ class APISecurityScanner:
                                 scanner.time = self.time_module
                             
                             self.logger.debug(f"Running {scanner_class.__name__} on {method} {endpoint_url}")
-                            check_findings = scanner.scan(endpoint_url, method, path, response)
+                            # Pass headers to scanner
+                            check_findings = scanner.scan(endpoint_url, method, path, response, headers=self.headers)
                             
                             if check_findings:
                                 findings.extend(check_findings)
@@ -235,6 +219,40 @@ class APISecurityScanner:
                 continue
 
         return all_findings
+        
+    def run(self) -> List[Dict]:
+        """Execute the API security scan and return findings"""
+        try:
+            self.logger.info("Starting API security scan...")
+            
+            # Include any credential harvesting findings
+            findings = self.findings.copy()
+            
+            # Execute the main API scan
+            scan_findings = self.scan_api()
+            findings.extend(scan_findings)
+            
+            self.logger.info(f"Scan complete. Found {len(findings)} potential security issues")
+            return findings
+            
+        except Exception as e:
+            self.logger.error(f"Critical error during scan: {str(e)}")
+            return self.findings  # Return any findings collected before the error
+
+    def _load_spec(self):
+        """Load and parse OpenAPI specification file"""
+        try:
+            with open(self.spec_file, 'r') as f:
+                return yaml.safe_load(f)
+        except FileNotFoundError:
+            self.logger.error(f"Specification file not found: {self.spec_file}")
+            raise
+        except yaml.YAMLError as e:
+            self.logger.error(f"Error parsing specification file: {str(e)}")
+            raise
+        except Exception as e:
+            self.logger.error(f"Unexpected error loading specification: {str(e)}")
+            raise
 
 def main():
     import argparse
