@@ -41,7 +41,16 @@ class BOLAScanner(BaseScanner):
                         "detail": f"Successfully accessed user data for ID {test_id} without proper authorization",
                         "evidence": {
                             "url": user_url,
-                            "response": user_resp.json()
+                            "method": "GET",
+                            "request": {
+                                "headers": dict(request_headers),
+                                "params": {"id": test_id}
+                            },
+                            "response": {
+                                "headers": dict(user_resp.headers),
+                                "status_code": user_resp.status_code,
+                                "body": user_resp.text[:500]
+                            }
                         }
                     })
                     

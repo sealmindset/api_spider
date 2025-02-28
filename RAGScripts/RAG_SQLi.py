@@ -74,12 +74,21 @@ class SQLiScanner(BaseScanner):
                                 'type': 'SQL_INJECTION',
                                 'severity': 'HIGH',
                                 'detail': f'SQL Injection vulnerability found using {attack_type}',
-                                'scenario': attack_type,
                                 'evidence': {
+                                    'url': f"{url}{path}",
+                                    'method': method,
+                                    'request': {
+                                        'headers': dict(headers),
+                                        'params': params,
+                                        'body': json_data
+                                    },
+                                    'response': {
+                                        'headers': dict(resp.headers),
+                                        'status_code': resp.status_code,
+                                        'body': resp.text[:500]
+                                    },
                                     'payload': payload,
-                                    'status_code': resp.status_code,
-                                    'response': resp.text[:500],
-                                    'headers': dict(resp.headers),
+                                    'scenario': attack_type,
                                     'error_matched': [e for e in sql_errors if e in resp.text]
                                 }
                             })

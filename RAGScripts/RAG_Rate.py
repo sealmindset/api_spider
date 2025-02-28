@@ -53,7 +53,17 @@ class RateLimitScanner(BaseScanner):
                     "detail": "No rate limiting detected after sending multiple rapid requests",
                     "evidence": {
                         "request_count": len(responses),
-                        "status_codes": responses
+                        "status_codes": responses,
+                        "request": {
+                            "headers": request_headers,
+                            "url": test_url,
+                            "method": "GET"
+                        },
+                        "response": {
+                            "headers": dict(response.headers),
+                            "status_code": response.status_code,
+                            "body": response.text
+                        }
                     }
                 })
                 

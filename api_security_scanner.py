@@ -159,6 +159,7 @@ class APISecurityScanner:
             RateLimitScanner,
             JWTBypassScanner
         ]
+        self.logger.info(f"Loaded {len(self.security_checks)} security scanners")
 
     def run(self) -> List[Dict]:
         start_time = time.time()
@@ -195,45 +196,30 @@ class APISecurityScanner:
                 try:
                     response = requests.request(method, endpoint_url, headers=self.headers)
                     
-                    for check in self.security_checks:
+                    for scanner_class in self.security_checks:
                         try:
-                            if isinstance(check, type):
-                                scanner = check()
-                                if check == MassAssignmentScanner:
-                                    scanner.time = self.time_module
-                                    self.logger.debug(f"Initialized {check.__name__} with time module: {self.time_module}")
-                                try:
-                                    check_findings = scanner.scan(endpoint_url, method, path, response)
-                                except AttributeError as ae:
-                                    self.logger.error(f"Method not found in {check.__name__}: {str(ae)}")
-                                    self.logger.error(f"Available methods: {[m for m in dir(scanner) if not m.startswith('_')]}")
-                                    continue
-                                except TypeError as te:
-                                    self.logger.error(f"Argument mismatch in {check.__name__}.scan(): {str(te)}")
-                                    self.logger.error(f"Expected signature: {inspect.signature(scanner.scan)}")
-                                    continue
-                                
+                            scanner = scanner_class()
+                            if hasattr(scanner, 'time'):
+                                scanner.time = self.time_module
+                            
+                            self.logger.debug(f"Running {scanner_class.__name__} on {method} {endpoint_url}")
+                            check_findings = scanner.scan(endpoint_url, method, path, response)
+                            
                             if check_findings:
                                 findings.extend(check_findings)
+                                self.logger.info(f"{scanner_class.__name__} found {len(check_findings)} issues")
+                                
                         except Exception as e:
-                            self.logger.error(f"Error in security check {check.__name__ if hasattr(check, '__name__') else type(check).__name__}:")
-                            self.logger.error(f"Error type: {type(e).__name__}")
-                            self.logger.error(f"Error message: {str(e)}")
-                            self.logger.error(f"Scanner state: {vars(scanner) if 'scanner' in locals() else 'Not initialized'}")
+                            self.logger.error(f"Error in {scanner_class.__name__}: {str(e)}")
                             continue
                             
                 except requests.RequestException as e:
-                    self.logger.error(f"Error accessing endpoint {endpoint_url}:")
-                    self.logger.error(f"Status code: {e.response.status_code if hasattr(e, 'response') else 'No response'}")
-                    self.logger.error(f"Error message: {str(e)}")
+                    self.logger.error(f"Error accessing {endpoint_url}: {str(e)}")
                     continue
 
             return findings
         except Exception as e:
-            self.logger.error(f"Critical error scanning endpoint {path}:")
-            self.logger.error(f"Error type: {type(e).__name__}")
-            self.logger.error(f"Error message: {str(e)}")
-            self.logger.error(f"Stack trace: ", exc_info=True)
+            self.logger.error(f"Critical error scanning {path}: {str(e)}")
             return findings
 
     def scan_api(self) -> List[Dict]:

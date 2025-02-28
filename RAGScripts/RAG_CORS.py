@@ -38,7 +38,24 @@ class CORSScanner(BaseScanner):
                 
                 acao = test_resp.headers.get("Access-Control-Allow-Origin")
                 if acao and (acao == "*" or origin in acao):
-                    request_data, response_data = self.capture_transaction(test_resp)
+                    vulnerabilities.append({
+                        "type": "CORS_MISCONFIGURATION",
+                        "severity": "HIGH",
+                        "detail": f"Endpoint allows CORS from dangerous origin: {origin}",
+                        "evidence": {
+                            "url": f"{url}{path}",
+                            "method": "OPTIONS",
+                            "request": {
+                                "headers": dict(test_headers),
+                                "origin": origin
+                            },
+                            "response": {
+                                "headers": dict(test_resp.headers),
+                                "status_code": test_resp.status_code,
+                                "body": test_resp.text[:500]
+                            }
+                        }
+                    })
                     
                     self.add_finding(
                         title="CORS Misconfiguration",

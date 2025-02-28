@@ -1,66 +1,60 @@
-#!/usr/bin/env python3
-import requests
-from typing import Dict, List, Optional
-import socket
-from urllib.parse import urlparse, urljoin
-from .base_scanner import BaseScanner
-from RAGScripts.utils.logger import setup_scanner_logger
+def is_ssrf_vulnerable(response, test_url):
+    # Check for SSRF indicators in response
+    return any(indicator in response.text.lower() for indicator in [
+        'private network',
+        'internal server',
+        'connection refused',
+        'network unreachable'
+    ])
 
-class SSRFScanner(BaseScanner):
-    # Define SSRF test payloads as class variable
-    ssrf_payloads = [
-        "http://localhost",
-        "http://127.0.0.1",
-        "http://0.0.0.0",
-        "http://[::1]",
-        "file:///etc/passwd",
-        "http://169.254.169.254/latest/meta-data/",
-        "http://metadata.google.internal/computeMetadata/v1/",
-        "http://169.254.169.254/latest/user-data",
-        "https://raw.githubusercontent.com/swisskyrepo/PayloadsAllTheThings/master/Server%20Side%20Request%20Forgery/README.md",
-        "dict://localhost:11211/stat"
+def scan_for_ssrf(url, method='GET', headers=None, params=None, data=None):
+    vulnerabilities = []
+    test_urls = [
+        'http://localhost',
+        'http://127.0.0.1',
+        'http://169.254.169.254',  # AWS metadata
+        'http://192.168.0.1'
     ]
-
-    @staticmethod
-    def scan(url: str, method: str, token: Optional[str] = None) -> List[Dict]:
-        logger = setup_scanner_logger("ssrf_check")
-        vulnerabilities = []
-        
-        # Use class variable for payloads
-        for test_url in SSRFScanner.ssrf_payloads:
+    
+    vectors = [
+        {'params': params, 'data': data}
+    ]
+    
+    for test_url in test_urls:
+        for vector in vectors:
             try:
-                # Create test vector without headers
-                vector = {
-                    'params': {'url': test_url},
-                    'data': json.dumps({'url': test_url}),
-                    'timeout': 5
-                }
-                
                 response = requests.request(
                     method,
                     url,
-                    headers=headers,  # Pass headers directly
-                    **vector  # Pass other parameters through vector
+                    headers=headers,
+                    params=vector['params'],
+                    data=vector['data'],
+                    timeout=10,
+                    allow_redirects=False
                 )
                 
                 if is_ssrf_vulnerable(response, test_url):
-                    vuln = {
+                    vulnerabilities.append({
                         'type': 'SSRF',
                         'severity': 'HIGH',
                         'detail': f'Potential SSRF vulnerability with {test_url}',
                         'evidence': {
                             'url': url,
                             'method': method,
-                            'test_url': test_url,
-                            'status_code': response.status_code,
-                            'response': response.text[:500]
+                            'request': {
+                                'headers': dict(headers),
+                                'params': vector['params'],
+                                'body': vector['data']
+                            },
+                            'response': {
+                                'headers': dict(response.headers),
+                                'status_code': response.status_code,
+                                'body': response.text[:500]
+                            },
+                            'test_url': test_url
                         }
-                    }
-                    vulnerabilities.append(vuln)
-                    
-            except requests.RequestException as e:
-                logger.error(f"Error testing {test_url}: {str(e)}")
+                    })
+            except Exception as e:
+                print(f'Error testing {test_url}: {str(e)}')
                 
-        return vulnerabilities
-
-scan = SSRFScanner.scan
+    return vulnerabilities

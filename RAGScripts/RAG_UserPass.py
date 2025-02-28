@@ -50,7 +50,14 @@ class UserPassEnumScanner(BaseScanner):
                             "evidence": {
                                 "url": login_url,
                                 "username": username,
-                                "response": response.text
+                                "request": {
+                                    "headers": dict(response.request.headers),
+                                    "body": payload
+                                },
+                                "response": {
+                                    "headers": dict(response.headers),
+                                    "body": response.text
+                                }
                             }
                         })
                         
