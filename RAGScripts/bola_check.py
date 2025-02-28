@@ -6,6 +6,10 @@ from .base_scanner import BaseScanner
 from RAGScripts.utils.logger import setup_scanner_logger
 
 class BOLAScanner(BaseScanner):
+    def __init__(self):
+        super().__init__()
+        self.target = None
+
     @staticmethod
     def scan(url: str, method: str, path: str, response: requests.Response, token: Optional[str] = None) -> List[Dict]:
         logger = setup_scanner_logger("bola_check")

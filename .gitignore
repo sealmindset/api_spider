@@ -1,4 +1,4 @@
 .env
-*.txt
+permutations.txt
 .DS_Store
 *.log

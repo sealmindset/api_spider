@@ -6,7 +6,7 @@ by attempting to set privileged attributes during object creation.
 """
 
 import requests
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Any
 from .base_scanner import BaseScanner
 from RAGScripts.utils.logger import setup_scanner_logger
 
@@ -14,9 +14,11 @@ class MassAssignmentScanner(BaseScanner):
     def __init__(self):
         super().__init__()
         self.logger = setup_scanner_logger("mass_assignment")
+        self.target = None
         
     def scan(self, url: str, method: str, path: str, response: requests.Response, token: Optional[str] = None, headers: Optional[Dict[str, str]] = None) -> List[Dict[str, Any]]:
         self.base_url = url
+        self.target = url
         vulnerabilities = []
         
         test_payload = {

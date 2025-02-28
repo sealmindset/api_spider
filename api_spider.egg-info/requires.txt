@@ -1,0 +1,4 @@
+httpx
+ollama
+pytest
+pytest-asyncio

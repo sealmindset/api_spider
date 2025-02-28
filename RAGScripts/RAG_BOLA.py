@@ -11,8 +11,44 @@ class BOLAScanner(BaseScanner):
     def __init__(self):
         super().__init__()
         self.logger = setup_scanner_logger("bola")
-        
+        self.target = None
+
     def scan(self, url: str, method: str, path: str, response: requests.Response, token: Optional[str] = None, headers: Optional[Dict[str, str]] = None) -> List[Dict[str, Any]]:
+        self.target = url
+        vulnerabilities = []
+        
+        # Test user IDs
+        test_ids = [1, 2, 3, 'admin', 'root']
+        
+        try:
+            for test_id in test_ids:
+                # Try to access user data
+                user_url = f"{url}/users/v1/{test_id}"
+                request_headers = headers or {}
+                if token:
+                    request_headers['Authorization'] = f'Bearer {token}'
+                
+                user_resp = requests.get(
+                    user_url,
+                    headers=request_headers,
+                    timeout=5
+                )
+                
+                if user_resp.status_code == 200:
+                    vulnerabilities.append({
+                        "type": "BOLA",
+                        "severity": "HIGH",
+                        "detail": f"Successfully accessed user data for ID {test_id} without proper authorization",
+                        "evidence": {
+                            "url": user_url,
+                            "response": user_resp.json()
+                        }
+                    })
+                    
+        except requests.RequestException as e:
+            self.logger.error(f"Error in BOLA check: {str(e)}")
+            
+        return vulnerabilities
         test_ids = ["admin", "user1", "superuser", "root"]
         original_path = path
         
