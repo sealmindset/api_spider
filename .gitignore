@@ -1,4 +1,10 @@
 .env
-permutations.txt
 .DS_Store
+
 *.log
+
+logs/
+swagger/
+backup/
+
+permutations.txt
