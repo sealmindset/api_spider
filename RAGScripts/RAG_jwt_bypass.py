@@ -14,13 +14,13 @@ This script tests for JWT authentication bypass vulnerabilities by:
 import jwt
 import time
 import requests
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Any
 from .base_scanner import BaseScanner
 from RAGScripts.utils.logger import setup_scanner_logger
 
 class JWTBypassScanner(BaseScanner):
     @staticmethod
-    def scan(url: str, method: str, path: str, response: requests.Response, token: Optional[str] = None, headers: Optional[Dict] = None) -> List[Dict]:
+    def scan(url: str, method: str, path: str, response: requests.Response, token: Optional[str] = None, headers: Optional[Dict] = None, tokens: Optional[Dict[str, List[Dict[str, Any]]]] = None, context: Optional[Dict[str, Any]] = None) -> List[Dict]:
         logger = setup_scanner_logger("jwt_bypass")
         vulnerabilities = []
         

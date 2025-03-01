@@ -11,7 +11,14 @@ import logging
 import json
 import time
 from datetime import datetime, timedelta
+from datetime import datetime, UTC
 import jwt
+
+class CustomJSONEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, bytes):
+            return obj.decode('utf-8', errors='replace')
+        return super().default(obj)
 
 # Import security check modules
 from RAGScripts.RAG_SQLi import SQLiScanner
@@ -23,6 +30,16 @@ from RAGScripts.RAG_UserPass import UserPassEnumScanner
 from RAGScripts.RAG_RegexDoS import RegexDOSScanner
 from RAGScripts.RAG_Rate import RateLimitScanner
 from RAGScripts.RAG_jwt_bypass import JWTBypassScanner
+from RAGScripts.RAG_CORS import CORSScanner
+from RAGScripts.RAG_SSRF import SSRFScanner
+from RAGScripts.RAG_CMDi import CommandInjectionScanner
+from RAGScripts.RAG_XSS import XSSScanner
+from RAGScripts.RAG_HTTPMethod import HTTPMethodScanner
+from RAGScripts.RAG_HostHeader import HostHeaderScanner
+from RAGScripts.RAG_JWT import JWTScanner
+from RAGScripts.RAG_OpenRedirect import OpenRedirectScanner
+from RAGScripts.RAG_PathTraversal import PathTraversalScanner
+from RAGScripts.RAG_UserEnum import UserEnumScanner
 from RAGScripts.utils.auth_handler import AuthHandler
 
 def setup_logging(verbosity: int = 1) -> logging.Logger:
@@ -102,7 +119,7 @@ class CredentialHarvester:
                             # Create new payload without exp claim
                             payload = {
                                 "sub": decoded['sub'],
-                                "iat": datetime.utcnow()
+                                "iat": datetime.now(UTC)
                             }
                             # Try common weak keys
                             weak_keys = ['secret', 'key', 'private', 'password', '123456']
@@ -128,9 +145,12 @@ class APISecurityScanner:
         self.spec = self._load_spec()
         self.discovery_cache = {}
         self.headers = {}
-        self.findings = []  # Initialize findings list
-        self.time_module = time  # Initialize time module as instance variable
+        self.time_module = time
         self.auth_handler = AuthHandler()
+        
+        # Initialize findings manager
+        from RAGScripts.utils.findings_manager import FindingsManager
+        self.findings_manager = FindingsManager(self.logger)
         
         # Extract security schemes and generate headers
         security_schemes = self.auth_handler.extract_security_schemes(self.spec)
@@ -142,11 +162,12 @@ class APISecurityScanner:
         if not token:
             finding = self.harvester.harvest_credentials()
             if finding:
-                self.findings.append(finding)  # Store the credential exposure finding
+                finding_id = self.findings_manager.add_finding(finding)
                 token = self.harvester.generate_admin_token()
                 if token:
                     self.logger.info("Successfully generated admin token")
-                    # Update headers with the new token
+                    # Store the token and update headers
+                    self.findings_manager.add_token('admin', token, {'source': 'harvester'})
                     self.headers.update(self.auth_handler.generate_auth_headers(security_schemes, token))
                 else:
                     self.logger.warning("Failed to generate admin token")
@@ -161,7 +182,17 @@ class APISecurityScanner:
             UserPassEnumScanner,
             RegexDOSScanner,
             RateLimitScanner,
-            JWTBypassScanner
+            JWTBypassScanner,
+            CORSScanner,
+            SSRFScanner,
+            CommandInjectionScanner,
+            XSSScanner,
+            HTTPMethodScanner,
+            HostHeaderScanner,
+            JWTScanner,
+            OpenRedirectScanner,
+            PathTraversalScanner,
+            UserEnumScanner
         ]
         self.logger.info(f"Loaded {len(self.security_checks)} security scanners")
 
@@ -186,11 +217,29 @@ class APISecurityScanner:
                                 scanner.time = self.time_module
                             
                             self.logger.debug(f"Running {scanner_class.__name__} on {method} {endpoint_url}")
-                            # Pass headers to scanner
-                            check_findings = scanner.scan(endpoint_url, method, path, response, headers=self.headers)
+                            
+                            # Get context for this scanner
+                            scanner_context = self.findings_manager.get_context(scanner_class.__name__)
+                            
+                            # Pass headers, tokens, and context to scanner
+                            check_findings = scanner.scan(
+                                endpoint_url,
+                                method,
+                                path,
+                                response,
+                                headers=self.headers,
+                                tokens=self.findings_manager.get_tokens(),
+                                context=scanner_context
+                            )
                             
                             if check_findings:
-                                findings.extend(check_findings)
+                                for finding in check_findings:
+                                    # Add finding with dependencies
+                                    finding_id = self.findings_manager.add_finding(
+                                        finding,
+                                        dependencies=finding.get('dependencies', [])
+                                    )
+                                    findings.append(finding)
                                 self.logger.info(f"{scanner_class.__name__} found {len(check_findings)} issues")
                                 
                         except Exception as e:
@@ -206,6 +255,24 @@ class APISecurityScanner:
             self.logger.error(f"Critical error scanning {path}: {str(e)}")
             return findings
 
+    def run(self) -> List[Dict]:
+        """Execute the API security scan and return findings"""
+        try:
+            self.logger.info("Starting API security scan...")
+            
+            # Execute the main API scan
+            scan_findings = self.scan_api()
+            
+            # Get all findings with dependencies
+            findings = self.findings_manager.get_findings(with_dependencies=True)
+            
+            self.logger.info(f"Scan complete. Found {len(findings)} potential security issues")
+            return findings
+            
+        except Exception as e:
+            self.logger.error(f"Critical error during scan: {str(e)}")
+            return self.findings_manager.get_findings()  # Return any findings collected before the error
+
     def scan_api(self) -> List[Dict]:
         all_findings = []
         paths = self.spec.get('paths', {})
@@ -220,25 +287,6 @@ class APISecurityScanner:
 
         return all_findings
         
-    def run(self) -> List[Dict]:
-        """Execute the API security scan and return findings"""
-        try:
-            self.logger.info("Starting API security scan...")
-            
-            # Include any credential harvesting findings
-            findings = self.findings.copy()
-            
-            # Execute the main API scan
-            scan_findings = self.scan_api()
-            findings.extend(scan_findings)
-            
-            self.logger.info(f"Scan complete. Found {len(findings)} potential security issues")
-            return findings
-            
-        except Exception as e:
-            self.logger.error(f"Critical error during scan: {str(e)}")
-            return self.findings  # Return any findings collected before the error
-
     def _load_spec(self):
         """Load and parse OpenAPI specification file"""
         try:
@@ -276,9 +324,9 @@ def main():
     
     if args.output:
         with open(args.output, 'w') as f:
-            json.dump(findings, f, indent=2)
+            json.dump(findings, f, indent=2, cls=CustomJSONEncoder)
     else:
-        print(json.dumps(findings, indent=2))
+        print(json.dumps(findings, indent=2, cls=CustomJSONEncoder))
 
 if __name__ == '__main__':
     main()

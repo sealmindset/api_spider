@@ -11,6 +11,9 @@ from .auth_level_check import AuthLevelScanner
 from .path_traversal_check import PathTraversalScanner
 from .asset_management_check import AssetManagementScanner
 from .llm_analyzer import LLMAnalyzer
+from .utils.findings_manager import FindingsManager
+import logging
+import aiohttp
 
 class ScannerOrchestrator:
     def __init__(self):
@@ -25,9 +28,17 @@ class ScannerOrchestrator:
             AssetManagementScanner
         ]
         self.llm_analyzer = LLMAnalyzer()
+        self.logger = logging.getLogger(__name__)
+        
+        # Initialize findings manager for enhanced reporting
+        self.findings_manager = FindingsManager(self.logger)
+        
+        # Initialize validation orchestrator for multi-stage verification
+        from RAGScripts.utils.validation_orchestrator import ValidationOrchestrator
+        self.validation_orchestrator = ValidationOrchestrator()
         
     async def scan_endpoint(self, url: str, method: str, path: str, response: requests.Response, token: Optional[str] = None) -> List[Dict]:
-        """Run all security scanners on a single endpoint with sequential LLM analysis"""
+        """Run all security scanners on a single endpoint with sequential LLM analysis and enhanced reporting"""
         findings = []
         
         for scanner_class in self.scanners:
@@ -36,7 +47,7 @@ class ScannerOrchestrator:
                 scanner_findings = scanner.scan(url, method, path, response, token)
                 
                 # Process each finding sequentially with LLM analysis
-                validated_findings = []
+                llm_validated_findings = []
                 for finding in scanner_findings:
                     # Analyze finding with LLM
                     llm_analysis = await self.llm_analyzer.analyze_finding(finding)
@@ -44,9 +55,30 @@ class ScannerOrchestrator:
                     # Only include findings that LLM validates as true positives
                     if llm_analysis and llm_analysis.get('confidence', 0) > 0.7:
                         finding['llm_analysis'] = llm_analysis
-                        validated_findings.append(finding)
-                    
-                findings.extend(validated_findings)
+                        
+                        # Add finding to findings manager with enhanced reporting
+                        finding_id = self.findings_manager.add_finding(
+                            finding,
+                            dependencies=finding.get('dependencies', [])
+                        )
+                        
+                        # Update finding with any additional context from findings manager
+                        finding_context = self.findings_manager.get_context(scanner_class.__name__)
+                        if finding_context:
+                            finding['context'] = finding_context
+                        
+                        llm_validated_findings.append(finding)
+                
+                # Perform multi-stage verification on LLM-validated findings
+                validated_findings = await self.validation_orchestrator.validate_findings(llm_validated_findings)
+                
+                # Add validated findings with attack chain information
+                for validated_finding in validated_findings:
+                    # Get related findings to build attack chains
+                    related = self.findings_manager.get_related_findings(validated_finding.get('id', ''))
+                    if related:
+                        validated_finding['related_findings'] = related
+                    findings.append(validated_finding)
                 
             except Exception as e:
                 self.logger.error(f"Error running {scanner_class.__name__}: {str(e)}")
@@ -55,7 +87,7 @@ class ScannerOrchestrator:
         return findings
 
     async def scan_api(self, base_url: str, endpoints: List[Dict], token: Optional[str] = None) -> List[Dict]:
-        """Scan entire API with sequential security checks and LLM analysis"""
+        """Scan entire API with sequential security checks, LLM analysis, and enhanced reporting"""
         all_findings = []
         
         for endpoint in endpoints:
@@ -74,4 +106,15 @@ class ScannerOrchestrator:
                 self.logger.error(f"Error scanning endpoint {url}: {str(e)}")
                 continue
                 
-        return all_findings
+        # Export validation metrics after scan completes
+        try:
+            metrics_path = "validation_metrics.json"
+            self.validation_orchestrator.export_validation_metrics(metrics_path)
+            self.logger.info(f"Validation metrics exported to {metrics_path}")
+        except Exception as e:
+            self.logger.error(f"Failed to export validation metrics: {str(e)}")
+            
+        # Get final findings with full attack chains and relationships
+        final_findings = self.findings_manager.get_findings(with_dependencies=True)
+        
+        return final_findings

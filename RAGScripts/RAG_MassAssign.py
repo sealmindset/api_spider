@@ -16,7 +16,7 @@ class MassAssignmentScanner(BaseScanner):
         self.logger = setup_scanner_logger("mass_assignment")
         self.target = None
         
-    def scan(self, url: str, method: str, path: str, response: requests.Response, token: Optional[str] = None, headers: Optional[Dict[str, str]] = None) -> List[Dict[str, Any]]:
+    def scan(self, url: str, method: str, path: str, response: requests.Response, token: Optional[str] = None, headers: Optional[Dict[str, str]] = None, tokens: Optional[Dict[str, List[Dict[str, Any]]]] = None, context: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
         self.base_url = url
         self.target = url
         vulnerabilities = []

@@ -6,13 +6,13 @@ differences in error messages between valid and invalid usernames.
 """
 
 import requests
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Any
 from .base_scanner import BaseScanner
 from RAGScripts.utils.logger import setup_scanner_logger
 
 class UserPassEnumScanner(BaseScanner):
     @staticmethod
-    def scan(url: str, method: str, path: str, response: requests.Response, token: Optional[str] = None, headers: Optional[Dict[str, str]] = None) -> List[Dict]:
+    def scan(url: str, method: str, path: str, response: requests.Response, token: Optional[str] = None, headers: Optional[Dict[str, str]] = None, tokens: Optional[Dict[str, List[Dict[str, Any]]]] = None, context: Optional[Dict[str, Any]] = None) -> List[Dict]:
         logger = setup_scanner_logger("user_pass_enum")
         vulnerabilities = []
         

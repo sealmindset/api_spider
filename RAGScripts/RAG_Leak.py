@@ -6,7 +6,7 @@ import sys
 import os
 import re
 import requests
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Any
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from .base_scanner import BaseScanner
 from RAGScripts.utils.logger import setup_scanner_logger  # Added missing import
@@ -17,7 +17,7 @@ class DataExposureScanner(BaseScanner):
         self.logger = setup_scanner_logger("data_exposure")
         self.findings = []
         
-    def scan(self, url: str, method: str, token: Optional[str] = None, headers: Optional[Dict] = None) -> List[Dict]:
+    def scan(self, url: str, method: str, path: str, response: requests.Response, token: Optional[str] = None, headers: Optional[Dict] = None, tokens: Optional[Dict[str, List[Dict[str, Any]]]] = None, context: Optional[Dict[str, Any]] = None) -> List[Dict]:
         self.base_url = url
         
         # List of endpoints to check for data exposure

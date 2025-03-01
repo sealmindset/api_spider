@@ -10,9 +10,19 @@ class HTTPMethodScanner(BaseScanner):
     def __init__(self):
         super().__init__()
         self.logger = setup_scanner_logger("http_method")
+        self.target = None
+        self.context = {}
         
-    def scan(self, url: str, method: str, path: str, response: requests.Response, token: Optional[str] = None, headers: Optional[Dict[str, str]] = None) -> List[Dict[str, Any]]:
+    def scan(self, url: str, method: str, path: str, response: requests.Response, token: Optional[str] = None, headers: Optional[Dict[str, str]] = None, tokens: Optional[Dict[str, List[Dict[str, Any]]]] = None, context: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
+        # Set target URL for make_request method
+        self.target = url
+        
         dangerous_methods = ["PUT", "DELETE", "TRACE", "OPTIONS", "CONNECT", "PATCH"]
+        
+        # Store context if provided
+        if context:
+            self.context = context
+            self.logger.info(f"Received context with {len(context)} items")
         
         for test_method in dangerous_methods:
             try:

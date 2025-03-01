@@ -1,0 +1,1 @@
+{"SQLi": {"analysis": "SQL Injection vulnerabilities found", "context": "Previous findings", "relationships": [["finding1"]], "remediation_template": ["Use parameterized queries"]}, "BOLA": {"analysis": "BOLA issues detected", "context": "Previous findings", "relationships": [["finding3"]], "remediation_template": ["Implement proper access controls"]}}

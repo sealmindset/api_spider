@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 import requests
-from typing import Dict, List, Optional
+import uuid
+from datetime import datetime
+from typing import Dict, List, Optional, Any
 from urllib.parse import urljoin, urlparse
 from .base_scanner import BaseScanner
 from RAGScripts.utils.logger import setup_scanner_logger
@@ -12,8 +14,29 @@ class BOLAScanner(BaseScanner):
 
     @staticmethod
     def scan(url: str, method: str, path: str, response: requests.Response, token: Optional[str] = None) -> List[Dict]:
-        logger = setup_scanner_logger("bola_check")
         vulnerabilities = []
+        
+        # Store context if provided
+        if context:
+            self.context = context
+            self.logger.info(f"Received context with {len(context)} items")
+            
+            # Use finding IDs from previous scans for dependency tracking
+            dependencies = context.get('finding_ids', [])
+            self.logger.info(f"Using {len(dependencies)} dependencies from previous findings")
+            
+            # Use credentials discovered by other scanners
+            credentials = context.get('credentials', [])
+            self.logger.info(f"Using {len(credentials)} credentials from other scanners")
+        
+        # Use tokens from other scanners if available
+        available_tokens = []
+        if tokens and 'bearer' in tokens:
+            available_tokens = [t.get('token') for t in tokens.get('bearer', [])]
+            self.logger.info(f"Using {len(available_tokens)} bearer tokens from other scanners")
+            
+        # Generate correlation ID for tracking related requests
+        correlation_id = str(uuid.uuid4())
         
         # Ensure URL has a scheme and host
         if not url.startswith(('http://', 'https://')):
@@ -21,10 +44,10 @@ class BOLAScanner(BaseScanner):
             
         parsed_url = urlparse(url)
         if not parsed_url.netloc:
-            logger.error(f"Invalid URL: {url} - Missing host")
+            self.logger.error(f"Invalid URL: {url} - Missing host")
             return vulnerabilities
             
-        logger.info(f"Testing endpoint: {method} {url}")
+        self.logger.info(f"Testing endpoint: {method} {url}")
         
         # Test objects for potential BOLA vulnerabilities
         test_objects = [
@@ -40,7 +63,7 @@ class BOLAScanner(BaseScanner):
             try:
                 # Construct test URL properly
                 test_url = url.rstrip('/') + '/' + test_obj['path']
-                logger.info(f"Testing object access: {test_url}")
+                self.logger.info(f"Testing object access: {test_url}")
                 
                 response = requests.request(
                     method,
@@ -65,10 +88,10 @@ class BOLAScanner(BaseScanner):
                         }
                     }
                     vulnerabilities.append(vuln)
-                    logger.warning(f"Found BOLA vulnerability: {vuln}")
+                    self.logger.warning(f"Found BOLA vulnerability for object {test_obj['id']}")
                     
             except requests.RequestException as e:
-                logger.error(f"Error testing object {test_obj['id']}: {str(e)}")
+                self.logger.error(f"Error testing object {test_obj['id']}: {str(e)}")
                 continue
                 
         return vulnerabilities

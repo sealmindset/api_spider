@@ -7,12 +7,12 @@ by sending specially crafted payloads to trigger regex processing delays.
 
 import requests
 import time
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Any
 from .base_scanner import BaseScanner
 from RAGScripts.utils.logger import setup_scanner_logger
 
 class RegexDOSScanner(BaseScanner):
-    def scan(self, url: str, method: str, path: str, response: requests.Response, token: Optional[str] = None, headers: Optional[Dict[str, str]] = None) -> List[Dict]:
+    def scan(self, url: str, method: str, path: str, response: requests.Response, token: Optional[str] = None, headers: Optional[Dict[str, str]] = None, tokens: Optional[Dict[str, List[Dict[str, Any]]]] = None, context: Optional[Dict[str, Any]] = None) -> List[Dict]:
         logger = setup_scanner_logger("regex_dos")
         vulnerabilities = []
         

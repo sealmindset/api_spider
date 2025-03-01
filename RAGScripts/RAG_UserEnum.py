@@ -3,6 +3,7 @@
 
 from typing import Dict, List, Optional, Any
 import requests
+import time
 from .base_scanner import BaseScanner
 from RAGScripts.utils.logger import setup_scanner_logger
 
@@ -10,8 +11,24 @@ class UserEnumScanner(BaseScanner):
     def __init__(self):
         super().__init__()
         self.logger = setup_scanner_logger("user_enum")
+        self.target = None
+        self.context = {}
+        self.time = time
         
-    def scan(self, url: str, method: str, path: str, response: requests.Response, token: Optional[str] = None, headers: Optional[Dict[str, str]] = None) -> List[Dict[str, Any]]:
+    def scan(self, url: str, method: str, path: str, response: requests.Response, token: Optional[str] = None, headers: Optional[Dict[str, str]] = None, tokens: Optional[Dict[str, List[Dict[str, Any]]]] = None, context: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
+        # Set target URL for make_request method
+        self.target = url
+        
+        # Store context if provided
+        if context:
+            self.context = context
+            self.logger.info(f"Received context with {len(context)} items")
+            
+        # Use tokens from other scanners if available
+        available_tokens = []
+        if tokens and 'bearer' in tokens:
+            available_tokens = [t.get('token') for t in tokens.get('bearer', [])]
+            self.logger.info(f"Using {len(available_tokens)} bearer tokens from other scanners")
         test_users = ["admin", "root", "administrator", "superuser"]
         base_response = None
         
