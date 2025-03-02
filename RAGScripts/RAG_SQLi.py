@@ -81,7 +81,17 @@ class SQLiScanner(BaseScanner):
                     params = {'id': payload, 'search': payload}
                     response = requests.request(method, f"{url}{path}", params=params, headers=headers, timeout=10)
                     
-                    # Capture transaction for evidence
+                    # Test in URL path
+                    path_response = requests.request(method, f"{url}/users/v1/{payload}", headers=headers, timeout=10)
+                    
+                    # Capture path test transaction
+                    path_req, path_res = self.capture_transaction(
+                        path_response,
+                        auth_state=auth_state,
+                        correlation_id=correlation_id
+                    )
+                    
+                    # Capture parameter test transaction
                     param_req, param_res = self.capture_transaction(
                         response,
                         auth_state=auth_state,
@@ -100,13 +110,17 @@ class SQLiScanner(BaseScanner):
                     )
                     
                     # Check for SQL errors in responses
-                    for resp, req_data, res_data in [(response, param_req, param_res), (json_response, json_req, json_res)]:
+                    for resp, req_data, res_data, test_type in [
+                        (response, param_req, param_res, 'parameter'),
+                        (path_response, path_req, path_res, 'path'),
+                        (json_response, json_req, json_res, 'json_body')
+                    ]:
                         if any(error in resp.text.lower() for error in sql_errors):
                             finding = {
                                 'type': 'SQL_INJECTION',
                                 'severity': 'HIGH',
                                 'endpoint': f"{url}{path}",
-                                'parameter': 'id' if params else 'json_body',
+                                'parameter': test_type,
                                 'attack_pattern': payload,
                                 'detail': f'SQL Injection vulnerability found using {attack_type}',
                                 'evidence': {
@@ -119,7 +133,8 @@ class SQLiScanner(BaseScanner):
                                     'error_matched': [e for e in sql_errors if e in resp.text],
                                     'auth_state': auth_state,
                                     'correlation_id': correlation_id
-                                }
+                                },
+                                'related_vulns': "Injection, No Credentials Required, Excessive Data Exposure"
                             }
                             vulnerabilities.append(finding)
                             self.logger.warning(f"Found SQL injection vulnerability using {attack_type}")
@@ -135,7 +150,7 @@ class SQLiScanner(BaseScanner):
                                         'type': 'SQL_INJECTION',
                                         'severity': 'HIGH',
                                         'endpoint': f"{url}{path}",
-                                        'parameter': 'id' if params else 'json_body',
+                                        'parameter': test_type,
                                         'attack_pattern': payload,
                                         'detail': 'Potential Boolean-based SQL Injection detected',
                                         'evidence': {
@@ -147,7 +162,8 @@ class SQLiScanner(BaseScanner):
                                             'scenario': 'Boolean Based',
                                             'auth_state': auth_state,
                                             'correlation_id': correlation_id
-                                        }
+                                        },
+                                        'related_vulns': "Injection, No Credentials Required, Excessive Data Exposure"
                                     }
                                     vulnerabilities.append(finding)
                                     self.logger.warning("Found Boolean-based SQL injection vulnerability")
@@ -167,15 +183,32 @@ class SQLiScanner(BaseScanner):
             "method": request.method,
             "url": request.url,
             "headers": dict(request.headers),
-            "body": request.body,
-            "timestamp": datetime.utcnow().isoformat()
+            "body": request.body.decode('utf-8', errors='ignore') if request.body else None,
+            "raw_body": request.body,
+            "timestamp": datetime.utcnow().isoformat(),
+            "content_type": request.headers.get('Content-Type'),
+            "content_length": len(request.body) if request.body else 0,
+            "url_components": {
+                "scheme": request.url.split('://')[0] if '://' in request.url else None,
+                "host": request.url.split('://')[1].split('/')[0] if '://' in request.url else None,
+                "path": '/' + '/'.join(request.url.split('://')[1].split('/')[1:]) if '://' in request.url else request.url
+            }
         }
         
         res_data = {
             "status_code": response.status_code,
             "headers": dict(response.headers),
-            "body": response.text[:500],  # Truncate long responses
-            "timestamp": datetime.utcnow().isoformat()
+            "body": response.text,  # Store full response
+            "raw_body": response.content,
+            "response_preview": response.text[:500],  # Keep preview for quick reference
+            "timestamp": datetime.utcnow().isoformat(),
+            "content_type": response.headers.get('Content-Type'),
+            "content_length": len(response.content),
+            "encoding": response.encoding,
+            "is_redirect": response.is_redirect,
+            "is_permanent_redirect": response.is_permanent_redirect,
+            "apparent_encoding": response.apparent_encoding,
+            "elapsed": response.elapsed.total_seconds()
         }
         
         if auth_state:

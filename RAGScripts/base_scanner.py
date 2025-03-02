@@ -126,13 +126,19 @@ class BaseScanner(ABC):
             'method': response.request.method,
             'url': response.request.url,
             'headers': dict(response.request.headers),
-            'body': response.request.body,
+            'body': response.request.body.decode('utf-8', errors='ignore') if response.request.body else None,
+            'raw_body': response.request.body,
             'query_params': dict(response.request._Request__args) if hasattr(response.request, '_Request__args') else {},
             'auth_state': auth_state,
             'correlation_id': correlation_id,
             'timestamp': datetime.utcnow().isoformat(),
             'content_type': response.request.headers.get('Content-Type'),
-            'content_length': len(response.request.body) if response.request.body else 0
+            'content_length': len(response.request.body) if response.request.body else 0,
+            'url_components': {
+                'scheme': response.request.url.split('://')[0] if '://' in response.request.url else None,
+                'host': response.request.url.split('://')[1].split('/')[0] if '://' in response.request.url else None,
+                'path': '/' + '/'.join(response.request.url.split('://')[1].split('/')[1:]) if '://' in response.request.url else response.request.url
+            }
         }
         
         # Capture detailed response information
@@ -141,6 +147,7 @@ class BaseScanner(ABC):
             'reason': response.reason,
             'headers': dict(response.headers),
             'body': response.text,
+            'raw_body': response.content,
             'content_type': response.headers.get('Content-Type'),
             'content_length': len(response.content),
             'cookies': dict(response.cookies),
@@ -148,14 +155,23 @@ class BaseScanner(ABC):
             'timestamp': datetime.utcnow().isoformat(),
             'correlation_id': correlation_id,
             'is_redirect': response.is_redirect,
-            'apparent_encoding': response.apparent_encoding
+            'apparent_encoding': response.apparent_encoding,
+            'history': [{
+                'url': r.url,
+                'status_code': r.status_code,
+                'headers': dict(r.headers)
+            } for r in response.history],
+            'encoding': response.encoding,
+            'is_permanent_redirect': response.is_permanent_redirect,
+            'links': response.links
         }
         
         # Add timing information
         response_data['timing'] = {
             'total_elapsed': response.elapsed.total_seconds(),
             'connection_time': getattr(response.raw, 'connection_time', None),
-            'start_time': getattr(response.raw, 'start_time', None)
+            'start_time': getattr(response.raw, 'start_time', None),
+            'end_time': datetime.utcnow().isoformat()
         }
         
         # Add authentication context
@@ -166,8 +182,21 @@ class BaseScanner(ABC):
                 'token_type': auth_state.get('token_type'),
                 'user_context': auth_state.get('user_context'),
                 'permissions': auth_state.get('permissions'),
-                'session_data': auth_state.get('session_data')
+                'session_data': auth_state.get('session_data'),
+                'token_expiry': auth_state.get('token_expiry'),
+                'token_claims': auth_state.get('token_claims'),
+                'scope': auth_state.get('scope')
             }
+        
+        # Add security headers analysis
+        response_data['security_headers'] = {
+            'x_frame_options': response.headers.get('X-Frame-Options'),
+            'x_content_type_options': response.headers.get('X-Content-Type-Options'),
+            'x_xss_protection': response.headers.get('X-XSS-Protection'),
+            'strict_transport_security': response.headers.get('Strict-Transport-Security'),
+            'content_security_policy': response.headers.get('Content-Security-Policy'),
+            'referrer_policy': response.headers.get('Referrer-Policy')
+        }
         
         return request_data, response_data
 

@@ -6,6 +6,7 @@ by attempting to set privileged attributes during object creation.
 """
 
 import requests
+import time
 from typing import Dict, List, Optional, Any
 from .base_scanner import BaseScanner
 from RAGScripts.utils.logger import setup_scanner_logger
@@ -21,49 +22,69 @@ class MassAssignmentScanner(BaseScanner):
         self.target = url
         vulnerabilities = []
         
-        test_payload = {
-            "username": "test_mass_" + str(int(self.time.time())),
-            "password": "test1",
-            "email": "test_mass_" + str(int(self.time.time())) + "@dom.com",
-            "admin": "true"
-        }
-        
         try:
-            register_url = f"{url}/users/v1/register"
-            register_resp = self.make_request(
-                method="POST",
-                endpoint="/users/v1/register",
-                data=test_payload
-            )
+            # Headers setup
+            request_headers = headers or {}
+            request_headers['Content-Type'] = 'application/json'
             
-            if register_resp.status_code == 200:
-                debug_resp = self.make_request(
-                    method="GET",
-                    endpoint="/users/v1/_debug"
+            # Test parameters for mass account creation
+            request_count = 50
+            interval = 0.1  # 100ms between requests
+            successful_registrations = []
+            start_time = time.time()
+            
+            # Attempt to create multiple accounts rapidly
+            for i in range(request_count):
+                test_payload = {
+                    "username": f"test_mass_{int(time.time())}_{i}",
+                    "password": "test1",
+                    "email": f"test_mass_{int(time.time())}_{i}@dom.com"
+                }
+                
+                register_resp = requests.post(
+                    f"{url}/users/v1/register",
+                    json=test_payload,
+                    headers=request_headers,
+                    timeout=5
                 )
                 
-                if debug_resp.status_code == 200:
-                    users = debug_resp.json().get("users", [])
-                    for user in users:
-                        if user.get("username") == test_payload["username"] and user.get("admin") == True:
-                            request_data, response_data = self.capture_transaction(register_resp)
-                            
-                            self.add_finding(
-                                title="Mass Assignment Vulnerability",
-                                description="Successfully created admin user through mass assignment",
-                                endpoint="/users/v1/register",
-                                severity_level="tier2",
-                                impact="Unauthorized privilege escalation through mass assignment",
-                                request=request_data,
-                                response=response_data,
-                                remediation="Implement proper input validation and role-based access control"
-                            )
-                            break
-                            
-        except requests.RequestException as e:
-            self.logger.error(f"Error in mass assignment check: {str(e)}")
+                if register_resp.status_code == 200:
+                    successful_registrations.append({
+                        "response": register_resp,
+                        "payload": test_payload,
+                        "time": time.time() - start_time
+                    })
+                
+                time.sleep(interval)
             
-        return self.findings
+            # If we successfully created a significant number of accounts
+            if len(successful_registrations) > 10:
+                # Capture evidence of the mass registration
+                register_data, register_response = self.capture_transaction(
+                    successful_registrations[0]["response"],
+                    auth_state={"auth_type": "none"},
+                    correlation_id=str(time.time())
+                )
+                
+                vulnerabilities.append({
+                    "type": "MASS_ACCOUNT_CREATION",
+                    "severity": "HIGH",
+                    "detail": f"Successfully created {len(successful_registrations)} accounts in {successful_registrations[-1]['time']:.2f} seconds without adequate rate limiting",
+                    "evidence": {
+                        "request": register_data,
+                        "response": register_response,
+                        "successful_registrations": len(successful_registrations),
+                        "time_elapsed": successful_registrations[-1]['time'],
+                        "sample_payload": successful_registrations[0]["payload"]
+                    },
+                    "remediation": "Implement proper rate limiting and account creation validation",
+                    "related_vulns": "No Credentials Required, No Rate Limiting"
+                })
+                
+        except requests.RequestException as e:
+            self.logger.error(f"Error in mass account creation check: {str(e)}")
+            
+        return vulnerabilities
 
 # Keep the scan function for backward compatibility
 scan = MassAssignmentScanner().scan

@@ -103,7 +103,8 @@ class CORSScanner(BaseScanner):
                         "context_update": {  # Update context for future scanners
                             "vulnerable_cors_endpoints": self.context.get("vulnerable_cors_endpoints", []) + [path],
                             "vulnerable_origins": self.context.get("vulnerable_origins", []) + [origin]
-                        }
+                        },
+                        "related_vulns": "XSS, Client-Side Request Forgery"
                     }
                     
                     # Add additional risk information if credentials are allowed

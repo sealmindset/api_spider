@@ -104,7 +104,8 @@ class XSSScanner(BaseScanner):
                         "context_update": {  # Update context for future scanners
                             "vulnerable_xss_endpoints": self.context.get("vulnerable_xss_endpoints", []) + [path],
                             "xss_payloads": self.context.get("xss_payloads", []) + [payload]
-                        }
+                        },
+                        "related_vulns": "CSRF, DOM-Based Attacks, Content Security Policy Bypass"
                     }
                     vulnerabilities.append(finding)
                     self.logger.warning(f"Found XSS vulnerability with payload: {payload}")

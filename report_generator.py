@@ -408,21 +408,60 @@ Technical Evidence:
                     details.append(f"- Body: {resp.get('body', 'Not specified')}")
                 details.append("")
             
-            elif vuln_type == 'Mass Assignment':
-                details.append("\nMass Assignment Analysis:")
-                details.append("- Vulnerability: Unfiltered parameter binding")
-                details.append("- Impact: Privilege escalation or data manipulation")
-                if 'request' in evidence:
-                    details.append("\nRequest Details:")
-                    req = evidence['request']
-                    details.append(f"- Method: {req.get('method', 'Not specified')}")
-                    details.append(f"- URL: {req.get('url', 'Not specified')}")
-                    details.append(f"- Body: {req.get('body', 'Not specified')}")
-                if 'response' in evidence:
-                    details.append("\nResponse Details:")
-                    resp = evidence['response']
-                    details.append(f"- Status Code: {resp.get('status_code', 'Not specified')}")
-                    details.append(f"- Body: {resp.get('body', 'Not specified')}")
+            elif vuln_type in ['Mass Assignment', 'MASS_ASSIGNMENT', 'MASS_ASSIGNMENT_PRIVILEGE_ESCALATION', 'PRIVILEGE_ESCALATION']:
+                details.append("\nMass Assignment/Privilege Escalation Analysis:")
+                details.append("- Vulnerability: Unfiltered parameter binding with privilege escalation potential")
+                details.append("- Impact: Unauthorized privilege escalation and role manipulation")
+                
+                # Initial state evidence
+                if 'initial_state' in evidence:
+                    details.append("\nInitial State:")
+                    init_state = evidence['initial_state']
+                    if 'request' in init_state:
+                        details.append("Request:")
+                        details.append(str(init_state['request']))
+                    if 'response' in init_state:
+                        details.append("\nResponse:")
+                        details.append(str(init_state['response']))
+                    if 'admin_count' in init_state:
+                        details.append(f"\nInitial Admin Count: {init_state['admin_count']}")
+                
+                # Exploitation evidence
+                if 'exploitation' in evidence:
+                    details.append("\nExploitation Attempt:")
+                    exploit = evidence['exploitation']
+                    if 'request' in exploit:
+                        details.append("Request:")
+                        details.append(str(exploit['request']))
+                    if 'response' in exploit:
+                        details.append("\nResponse:")
+                        details.append(str(exploit['response']))
+                    if 'payload' in exploit:
+                        details.append("\nPayload:")
+                        details.append(json.dumps(exploit['payload'], indent=2))
+                
+                # Verification evidence
+                if 'verification' in evidence:
+                    details.append("\nVerification:")
+                    verify = evidence['verification']
+                    if 'request' in verify:
+                        details.append("Request:")
+                        details.append(str(verify['request']))
+                    if 'response' in verify:
+                        details.append("\nResponse:")
+                        details.append(str(verify['response']))
+                    if 'new_admin_user' in verify:
+                        details.append("\nNew Admin User:")
+                        details.append(json.dumps(verify['new_admin_user'], indent=2))
+                
+                # Fall back to standard request/response if structured evidence not available
+                if not any(k in evidence for k in ['initial_state', 'exploitation', 'verification']):
+                    if 'request' in evidence:
+                        details.append("\nRequest Details:")
+                        details.append(str(evidence['request']))
+                    if 'response' in evidence:
+                        details.append("\nResponse Details:")
+                        details.append(str(evidence['response']))
                 details.append("")
             
             elif vuln_type == 'Data Exposure' or finding.get('type') == 'EXCESSIVE_DATA_EXPOSURE':
