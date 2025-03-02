@@ -20,6 +20,9 @@ class AdvancedChainAttackScanner(BaseScanner):
         self.context = {}
         self.findings_cache = {}
         self.attack_chains = []
+        self.chain_dependencies = {}
+        self.auth_states = {}
+        self.vulnerability_graph = {}
 
     async def scan(self, url: str, method: str, path: str, response: requests.Response,
                    token: Optional[str] = None, headers: Optional[Dict[str, str]] = None,
@@ -28,18 +31,26 @@ class AdvancedChainAttackScanner(BaseScanner):
         
         vulnerabilities = []
         
-        # Store context if provided
+        # Enhanced context handling and dependency tracking
         if context:
             self.context = context
             self.logger.info(f"Received context with {len(context)} items")
+            
+            # Track finding dependencies and auth states
+            self.chain_dependencies = context.get('chain_dependencies', {})
+            self.auth_states = context.get('auth_states', {})
             
             # Use finding IDs from previous scans for dependency tracking
             dependencies = context.get('finding_ids', [])
             self.logger.info(f"Using {len(dependencies)} dependencies from previous findings")
             
-            # Use credentials discovered by other scanners
+            # Use credentials and tokens discovered by other scanners
             credentials = context.get('credentials', [])
-            self.logger.info(f"Using {len(credentials)} credentials from other scanners")
+            tokens = context.get('discovered_tokens', [])
+            self.logger.info(f"Using {len(credentials)} credentials and {len(tokens)} tokens from other scanners")
+            
+            # Build vulnerability graph for attack chain correlation
+            self.vulnerability_graph = self._build_vulnerability_graph(context)
 
         # Generate correlation ID
         correlation_id = str(uuid.uuid4())
@@ -85,16 +96,24 @@ class AdvancedChainAttackScanner(BaseScanner):
                 if admin_creds:
                     escalation = await self.attempt_privilege_escalation(url, admin_creds)
                     if escalation:
-                        chain_findings.append({
+                        finding = {
                             "type": "CHAIN_ATTACK_SQLI_PRIVESC",
                             "severity": "CRITICAL",
                             "detail": "Successfully executed SQLi to privilege escalation chain",
                             "evidence": {
                                 "correlation_id": correlation_id,
                                 "chain_steps": ["sqli", "privesc", "mass_assign"],
-                                "admin_access": True
+                                "admin_access": True,
+                                "extracted_credentials": admin_creds,
+                                "auth_state": self.auth_states.get(correlation_id)
+                            },
+                            "chain_context": {
+                                "previous_findings": self.chain_dependencies.get(correlation_id, []),
+                                "vulnerability_path": self._get_vulnerability_path("sqli", "privesc")
                             }
-                        })
+                        }
+                        self._update_vulnerability_graph(finding)
+                        chain_findings.append(finding)
         except Exception as e:
             self.logger.error(f"Error in SQLi chain: {str(e)}")
         return chain_findings
@@ -192,9 +211,109 @@ class AdvancedChainAttackScanner(BaseScanner):
     async def attempt_privilege_escalation(self, url: str, credentials: Dict) -> bool:
         """Attempt privilege escalation using extracted credentials"""
         try:
-            # Implement privilege escalation logic
+            # Enhanced privilege escalation detection
+            auth_resp = requests.post(
+                f"{url}/users/v1/login",
+                json=credentials,
+                timeout=5
+            )
+            
+            if auth_resp.status_code == 200:
+                token = auth_resp.json().get('token')
+                if token:
+                    # Try accessing admin endpoints
+                    admin_headers = {"Authorization": f"Bearer {token}"}
+                    admin_resp = requests.get(
+                        f"{url}/admin",
+                        headers=admin_headers,
+                        timeout=5
+                    )
+                    return admin_resp.status_code == 200
             return False
-        except Exception:
+        except Exception as e:
+            self.logger.error(f"Error in privilege escalation attempt: {str(e)}")
             return False
+            
+    def _build_vulnerability_graph(self, context: Dict) -> Dict:
+        """Build graph of related vulnerabilities for attack chain analysis"""
+        graph = {}
+        findings = context.get('findings', [])
+        
+        for finding in findings:
+            vuln_type = finding.get('type')
+            if vuln_type:
+                if vuln_type not in graph:
+                    graph[vuln_type] = {
+                        'related_vulns': set(),
+                        'auth_states': [],
+                        'evidence': []
+                    }
+                
+                # Link related vulnerabilities
+                chain_context = finding.get('chain_context', {})
+                for prev_finding in chain_context.get('previous_findings', []):
+                    graph[vuln_type]['related_vulns'].add(prev_finding.get('type'))
+                
+                # Store auth states and evidence
+                auth_state = finding.get('evidence', {}).get('auth_state')
+                if auth_state:
+                    graph[vuln_type]['auth_states'].append(auth_state)
+                    
+                graph[vuln_type]['evidence'].append(finding.get('evidence', {}))
+                
+        return graph
+        
+    def _get_vulnerability_path(self, start_vuln: str, end_vuln: str) -> List[str]:
+        """Find attack path between vulnerabilities in the graph"""
+        if not self.vulnerability_graph:
+            return [start_vuln, end_vuln]
+            
+        path = [start_vuln]
+        visited = set([start_vuln])
+        
+        def dfs(current: str, target: str, current_path: List[str]) -> List[str]:
+            if current == target:
+                return current_path
+                
+            if current in self.vulnerability_graph:
+                for next_vuln in self.vulnerability_graph[current]['related_vulns']:
+                    if next_vuln not in visited:
+                        visited.add(next_vuln)
+                        result = dfs(next_vuln, target, current_path + [next_vuln])
+                        if result:
+                            return result
+            return None
+            
+        result_path = dfs(start_vuln, end_vuln, path)
+        return result_path if result_path else [start_vuln, end_vuln]
+        
+    def _update_vulnerability_graph(self, finding: Dict) -> None:
+        """Update vulnerability graph with new finding"""
+        vuln_type = finding.get('type')
+        if not vuln_type:
+            return
+            
+        if vuln_type not in self.vulnerability_graph:
+            self.vulnerability_graph[vuln_type] = {
+                'related_vulns': set(),
+                'auth_states': [],
+                'evidence': []
+            }
+            
+        graph_entry = self.vulnerability_graph[vuln_type]
+        
+        # Update related vulnerabilities
+        chain_context = finding.get('chain_context', {})
+        for prev_finding in chain_context.get('previous_findings', []):
+            prev_type = prev_finding.get('type')
+            if prev_type:
+                graph_entry['related_vulns'].add(prev_type)
+                
+        # Update auth states and evidence
+        auth_state = finding.get('evidence', {}).get('auth_state')
+        if auth_state:
+            graph_entry['auth_states'].append(auth_state)
+            
+        graph_entry['evidence'].append(finding.get('evidence', {}))
 
 scan = AdvancedChainAttackScanner().scan

@@ -2,9 +2,12 @@
 .DS_Store
 
 *.log
+*.json
+*.html
 
 logs/
 swagger/
 backup/
+reports/
 
 permutations.txt

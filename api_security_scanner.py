@@ -80,8 +80,14 @@ class CredentialHarvester:
                 return {
                     "type": "CREDENTIAL_EXPOSURE",
                     "severity": "CRITICAL",
+                    "endpoint": f"{self.base_url}/users/v1/_debug",
+                    "parameter": null,
+                    "attack_pattern": "Direct access to debug endpoint",
                     "detail": "Exposed credentials through debug endpoint",
                     "evidence": {
+                        "code": "@app.route('/users/v1/_debug')\ndef debug_endpoint():\n    users = User.query.all()\n    return jsonify({'users': [u.to_dict() for u in users]})",
+                        "payload": "GET /users/v1/_debug",
+                        "response_sample": json.dumps({"users": [users[0] if users else {}]})[:200],
                         "url": f"{self.base_url}/users/v1/_debug",
                         "user_count": len(users),
                         "sample": users[0] if users else None
@@ -198,6 +204,9 @@ class APISecurityScanner:
 
     def scan_endpoint(self, path: str, methods: Dict[str, Any]) -> List[Dict]:
         findings = []
+        # Initialize finding formatter if not already done
+        from RAGScripts.utils.finding_formatter import FindingFormatter
+        formatter = FindingFormatter()
         try:
             endpoint_url = urljoin(self.target_url, path)
 
@@ -234,12 +243,15 @@ class APISecurityScanner:
                             
                             if check_findings:
                                 for finding in check_findings:
+                                    # Format finding to match enhanced format
+                                    formatted_finding = formatter.format_finding(finding, self.target_url, path)
+                                    
                                     # Add finding with dependencies
                                     finding_id = self.findings_manager.add_finding(
-                                        finding,
+                                        formatted_finding,
                                         dependencies=finding.get('dependencies', [])
                                     )
-                                    findings.append(finding)
+                                    findings.append(formatted_finding)
                                 self.logger.info(f"{scanner_class.__name__} found {len(check_findings)} issues")
                                 
                         except Exception as e:

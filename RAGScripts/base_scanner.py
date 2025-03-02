@@ -24,6 +24,10 @@ class BaseScanner(ABC):
         self.session = requests.Session()
         self.llm_analyzer = LLMAnalyzer()
         self.context = {}
+        
+        # Initialize finding formatter
+        from .utils.finding_formatter import FindingFormatter
+        self.finding_formatter = FindingFormatter()
         # Remediation templates for common vulnerability types
         self.remediation_templates = {
             'SQLI': {
@@ -97,6 +101,23 @@ class BaseScanner(ABC):
             List[Dict[str, Any]]: List of discovered vulnerabilities
         """
         raise NotImplementedError("Scan method must be implemented by child classes")
+        
+    def format_findings(self, findings: List[Dict[str, Any]], url: str = None, path: str = None) -> List[Dict[str, Any]]:
+        """Format findings using the standardized formatter
+        
+        Args:
+            findings: List of raw findings from scanner
+            url: Base URL of the target
+            path: API endpoint path
+            
+        Returns:
+            List[Dict[str, Any]]: List of standardized findings
+        """
+        formatted_findings = []
+        for finding in findings:
+            formatted = self.finding_formatter.format_finding(finding, url, path)
+            formatted_findings.append(formatted)
+        return formatted_findings
 
     def capture_transaction(self, response: requests.Response, auth_state: Dict[str, Any], correlation_id: str) -> tuple[Dict[str, Any], Dict[str, Any]]:
         """Capture comprehensive request/response transaction details with auth state and timing"""

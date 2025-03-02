@@ -1,6 +1,5 @@
-from .logger import setup_logger
-from .cognitive_analyzer import CognitiveAnalyzer
-from .pattern_extractor import PatternExtractor
-from .prompt_templates import PromptTemplates
+# Import utility modules
+from .logger import setup_logger, setup_scanner_logger
+from .finding_formatter import FindingFormatter
 
-__all__ = ['setup_logger', 'CognitiveAnalyzer', 'PatternExtractor', 'PromptTemplates']
+__all__ = ['setup_logger', 'setup_scanner_logger', 'FindingFormatter']

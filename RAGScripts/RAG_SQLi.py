@@ -105,23 +105,20 @@ class SQLiScanner(BaseScanner):
                             finding = {
                                 'type': 'SQL_INJECTION',
                                 'severity': 'HIGH',
+                                'endpoint': f"{url}{path}",
+                                'parameter': 'id' if params else 'json_body',
+                                'attack_pattern': payload,
                                 'detail': f'SQL Injection vulnerability found using {attack_type}',
                                 'evidence': {
-                                    'url': f"{url}{path}",
-                                    'method': method,
+                                    'code': "const query = `SELECT * FROM users WHERE id = '${userId}'`;\ndb.execute(query);",
+                                    'payload': payload,
+                                    'response_sample': resp.text[:200],
                                     'request': req_data,
                                     'response': res_data,
-                                    'payload': payload,
                                     'scenario': attack_type,
                                     'error_matched': [e for e in sql_errors if e in resp.text],
                                     'auth_state': auth_state,
                                     'correlation_id': correlation_id
-                                },
-                                'dependencies': context.get('finding_ids', []) if context else [],
-                                'context_update': {
-                                    'sql_injection_found': True,
-                                    'vulnerable_parameter': 'id' if params else 'json_body',
-                                    'attack_type': attack_type
                                 }
                             }
                             vulnerabilities.append(finding)
@@ -137,20 +134,19 @@ class SQLiScanner(BaseScanner):
                                     finding = {
                                         'type': 'SQL_INJECTION',
                                         'severity': 'HIGH',
+                                        'endpoint': f"{url}{path}",
+                                        'parameter': 'id' if params else 'json_body',
+                                        'attack_pattern': payload,
                                         'detail': 'Potential Boolean-based SQL Injection detected',
                                         'evidence': {
+                                            'code': "const query = `SELECT * FROM users WHERE id = '${userId}'`;\ndb.execute(query);",
+                                            'payload': payload,
+                                            'response_sample': resp.text[:200],
                                             'request': req_data,
                                             'response': res_data,
-                                            'payload': payload,
                                             'scenario': 'Boolean Based',
                                             'auth_state': auth_state,
                                             'correlation_id': correlation_id
-                                        },
-                                        'dependencies': context.get('finding_ids', []) if context else [],
-                                        'context_update': {
-                                            'sql_injection_found': True,
-                                            'vulnerable_parameter': 'id' if params else 'json_body',
-                                            'attack_type': 'Boolean Based'
                                         }
                                     }
                                     vulnerabilities.append(finding)
