@@ -121,7 +121,7 @@ class BaseScanner(ABC):
 
     def capture_transaction(self, response: requests.Response, auth_state: Dict[str, Any], correlation_id: str) -> tuple[Dict[str, Any], Dict[str, Any]]:
         """Capture comprehensive request/response transaction details with auth state and timing"""
-        # Capture detailed request information
+        # Capture detailed request information including raw data for replay
         request_data = {
             'method': response.request.method,
             'url': response.request.url,
@@ -134,6 +134,7 @@ class BaseScanner(ABC):
             'timestamp': datetime.utcnow().isoformat(),
             'content_type': response.request.headers.get('Content-Type'),
             'content_length': len(response.request.body) if response.request.body else 0,
+            'curl_command': self._generate_curl_command(response.request),
             'url_components': {
                 'scheme': response.request.url.split('://')[0] if '://' in response.request.url else None,
                 'host': response.request.url.split('://')[1].split('/')[0] if '://' in response.request.url else None,
@@ -141,7 +142,7 @@ class BaseScanner(ABC):
             }
         }
         
-        # Capture detailed response information
+        # Capture detailed response information including evidence of vulnerability
         response_data = {
             'status_code': response.status_code,
             'reason': response.reason,
@@ -159,11 +160,13 @@ class BaseScanner(ABC):
             'history': [{
                 'url': r.url,
                 'status_code': r.status_code,
-                'headers': dict(r.headers)
+                'headers': dict(r.headers),
+                'body': r.text[:500]  # Include partial response body for redirect chain
             } for r in response.history],
             'encoding': response.encoding,
             'is_permanent_redirect': response.is_permanent_redirect,
-            'links': response.links
+            'links': response.links,
+            'error_indicators': self._detect_error_indicators(response)
         }
         
         # Add timing information
@@ -199,6 +202,59 @@ class BaseScanner(ABC):
         }
         
         return request_data, response_data
+        
+    def _generate_curl_command(self, request) -> str:
+        """Generate a curl command that can reproduce the request"""
+        command = [f"curl -X {request.method}"]
+        
+        # Add headers
+        for header, value in request.headers.items():
+            if header.lower() not in ['content-length', 'host']:
+                command.append(f"-H '{header}: {value}'")
+                
+        # Add request body if present
+        if request.body:
+            try:
+                body = request.body.decode('utf-8')
+                command.append(f"-d '{body}'")
+            except UnicodeDecodeError:
+                command.append("--data-binary @-")
+                
+        # Add the URL
+        command.append(f"'{request.url}'")
+        
+        return " \
+  ".join(command)
+        
+    def _detect_error_indicators(self, response) -> Dict[str, Any]:
+        """Detect various error indicators in the response"""
+        indicators = {
+            'sql_errors': False,
+            'stack_traces': False,
+            'debug_info': False,
+            'sensitive_data': False
+        }
+        
+        # Check response body for various error patterns
+        body_lower = response.text.lower()
+        
+        # SQL error detection
+        sql_patterns = ['sql', 'mysql', 'postgresql', 'ora-', 'sqlstate']
+        indicators['sql_errors'] = any(pattern in body_lower for pattern in sql_patterns)
+        
+        # Stack trace detection
+        stack_patterns = ['exception', 'stack trace', 'debug', 'at line', 'file:']
+        indicators['stack_traces'] = any(pattern in body_lower for pattern in stack_patterns)
+        
+        # Debug info detection
+        debug_patterns = ['debug', 'development', 'test', 'beta']
+        indicators['debug_info'] = any(pattern in body_lower for pattern in debug_patterns)
+        
+        # Sensitive data detection
+        sensitive_patterns = ['password', 'secret', 'key', 'token', 'credential']
+        indicators['sensitive_data'] = any(pattern in body_lower for pattern in sensitive_patterns)
+        
+        return indicators
 
     def add_dependency(self, finding: Dict[str, Any], dependency_id: str) -> None:
         """Add dependency to a finding"""

@@ -9,6 +9,14 @@ from jinja2 import Template
 
 class ReportGenerator:
     def __init__(self):
+        import logging
+        self.logger = logging.getLogger('report_generator')
+        handler = logging.StreamHandler()
+        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        handler.setFormatter(formatter)
+        self.logger.addHandler(handler)
+        self.logger.setLevel(logging.INFO)
+        
         self.severity_colors = {
             'CRITICAL': '#dc3545',
             'HIGH': '#fd7e14',
@@ -192,6 +200,11 @@ class ReportGenerator:
         # Group findings by vulnerability type
         findings_by_type = {}
         for finding in findings:
+            # Skip API workflow test entries and INFO severity findings
+            if finding.get('type') == 'API_WORKFLOW_TEST' or finding.get('severity') == 'INFO':
+                self.logger.info(f"Skipping finding of type {finding.get('type')} with severity {finding.get('severity')}")
+                continue
+                
             # Normalize vulnerability type names
             vuln_type = finding.get('type')
             if vuln_type == 'SQL_INJECTION':
@@ -226,6 +239,28 @@ class ReportGenerator:
             
             # Generate developer insights focusing on root cause
             developer_insights = self.generate_developer_insights(vuln_type, finding_data)
+            
+            # Generate customized remediation steps using LLM
+            try:
+                from llm_analyzer import chat
+                remediation_prompt = f"""Based on the following vulnerability details, provide specific, actionable remediation steps:
+
+Vulnerability Type: {vuln_type}
+Severity: {severity}
+Description: {finding_data.get('detail', '')}
+Attack Pattern: {finding_data.get('attack_pattern', '')}
+
+Provide remediation steps that are:
+1. Specific to this vulnerability instance
+2. Prioritized by importance
+3. Include both immediate fixes and long-term solutions
+4. Consider implementation complexity"""
+                
+                remediation_response = chat('llama3.3', messages=[{"role": "user", "content": remediation_prompt}])
+                remediation_steps = remediation_response.message.content.split('\n')
+            except Exception:
+                # Fallback to template remediation steps
+                remediation_steps = self.remediation_templates.get(vuln_type, [])
 
             # Process the finding data
             processed_findings[vuln_type] = {
@@ -233,32 +268,82 @@ class ReportGenerator:
                 'severity_color': self.severity_colors[severity],
                 'analysis': str(analysis_content),
                 'technical_details': str(technical_details),
-                'remediation_steps': [str(step) for step in self.remediation_templates.get(vuln_type, [])],
+                'remediation_steps': remediation_steps,
                 'developer_insights': str(developer_insights)
             }
 
-        return processed_findings, total_findings, critical_findings
+        # Generate executive summary using LLM
+        try:
+            from llm_analyzer import chat
+            summary_prompt = f"""Generate an executive summary for an API security assessment with the following findings:
+
+Total Findings: {total_findings}
+Critical Findings: {critical_findings}
+Vulnerability Types: {', '.join(findings_by_type.keys())}
+
+Provide a concise summary that includes:
+1. Overall security posture assessment
+2. Key risk areas and their business impact
+3. Prioritized recommendations
+4. Trends and patterns in the findings"""
+            
+            summary_response = chat('llama3.3', messages=[{"role": "user", "content": summary_prompt}])
+            executive_summary = summary_response.message.content
+        except Exception:
+            # Fallback to basic summary
+            executive_summary = f"Found {total_findings} security issues, including {critical_findings} critical vulnerabilities across {len(findings_by_type)} different vulnerability types."
+
+        return processed_findings, total_findings, critical_findings, executive_summary
 
     def generate_enhanced_analysis(self, vuln_type: str, finding_data: dict) -> str:
-        """Generate comprehensive analysis content for the Analysis tab."""
-        # Handle case where finding_data contains an 'analysis' field with complete analysis
-        if 'analysis' in finding_data and isinstance(finding_data['analysis'], str) and len(finding_data['analysis']) > 100:
-            # If we have a complete analysis, use it directly
-            return finding_data['analysis']
-            
-        # Otherwise, build analysis from individual fields
+        """Generate comprehensive analysis content for the Analysis tab using LLM."""
+        # Extract key information for LLM analysis - moved outside try block to ensure availability in except block
         description = finding_data.get('detail', '')
         if not description and 'analysis' in finding_data:
             description = finding_data['analysis']
-
-        # Build impact analysis
-        impact = finding_data.get('impact', 'Potential security impact not specified')
         
-        # Get evidence details
         evidence = finding_data.get('evidence', {})
         attack_pattern = finding_data.get('attack_pattern', '')
+        endpoint = finding_data.get('endpoint', 'Not specified')
+        parameter = finding_data.get('parameter', 'Not specified')
+        severity = finding_data.get('severity', 'MEDIUM')
+        impact = finding_data.get('impact', '')
         
-        analysis = f"""Vulnerability Type: {vuln_type}
+        try:
+            from llm_analyzer import chat
+            
+            # Construct prompt for LLM
+            prompt = f"""Analyze this {vuln_type} security finding with the following details:
+
+Vulnerability Information:
+- Type: {vuln_type}
+- Severity: {severity}
+- Endpoint: {endpoint}
+- Parameter: {parameter}
+- Attack Pattern: {attack_pattern}
+
+Technical Details:
+{description}
+
+Evidence:
+{json.dumps(evidence, indent=2)}
+
+Provide a comprehensive security analysis including:
+1. Detailed vulnerability description
+2. Attack scenario and potential impact
+3. Business risk assessment
+4. Real-world exploitation examples
+5. Detection and prevention strategies
+
+Format the response in clear sections with markdown headings."""
+
+            # Get enhanced analysis from LLM
+            try:
+                response = chat('llama3.3', messages=[{"role": "user", "content": prompt}])
+                analysis = response.message.content
+            except Exception as e:
+                # Fallback to template-based analysis if LLM fails
+                analysis = f"""Vulnerability Type: {vuln_type}
 
 Description:
 {description}
@@ -272,10 +357,29 @@ Impact Analysis:
 
 Technical Evidence:
 - Attack Pattern: {attack_pattern}
-- Endpoint: {finding_data.get('endpoint', 'Not specified')}
-- Parameter: {finding_data.get('parameter', 'Not specified')}"""
+- Endpoint: {endpoint}
+- Parameter: {parameter}"""
+                
+            return analysis
+            
+        except ImportError:
+            # Fallback if LLM module is not available
+            return f"""Vulnerability Type: {vuln_type}
 
-        return analysis
+Description:
+{description}
+
+Why This is Dangerous:
+- This vulnerability could allow attackers to {self.get_attack_impact(vuln_type)}
+- The identified attack pattern ({attack_pattern}) demonstrates active exploitation potential
+
+Impact Analysis:
+{impact}
+
+Technical Evidence:
+- Attack Pattern: {attack_pattern}
+- Endpoint: {endpoint}
+- Parameter: {parameter}"""
 
     def get_attack_impact(self, vuln_type: str) -> str:
         """Get description of potential attack impact for a vulnerability type."""
@@ -343,175 +447,16 @@ Technical Evidence:
             else:
                 details.append("Attack Pattern: Not specified\n")
             
-            # Add evidence details with proper formatting for all vulnerability types
-            if vuln_type in ['JWT_WEAK_KEY', 'JWT_ALG_NONE', 'JWT Bypass']:
-                details.append("\nJWT Analysis:")
-                if 'jwt_request' in evidence:
-                    details.append("Request Details:")
-                    jwt_req = evidence['jwt_request']
-                    details.append(f"- Method: {jwt_req.get('method', 'Not specified')}")
-                    details.append(f"- URL: {jwt_req.get('url', 'Not specified')}")
-                    details.append(f"- Authorization: {jwt_req.get('headers', {}).get('Authorization', 'Not specified')}")
-                    
-                    if 'auth_state' in jwt_req:
-                        details.append("\nAuthentication State:")
-                        auth_state = jwt_req['auth_state']
-                        details.append(f"- Auth Type: {auth_state.get('auth_type', 'Not specified')}")
-                        if 'weak_key' in auth_state:
-                            details.append(f"- Weak Key: {auth_state['weak_key']}")
-                        if 'attack' in auth_state:
-                            details.append(f"- Attack Type: {auth_state['attack']}")
-                
-                if 'jwt_response' in evidence:
-                    details.append("\nResponse Details:")
-                    jwt_resp = evidence['jwt_response']
-                    details.append(f"- Status Code: {jwt_resp.get('status_code', 'Not specified')}")
-                    details.append(f"- Body: {jwt_resp.get('body', 'Not specified')}")
-                
-                if 'payload' in evidence:
-                    details.append("\nPayload Details:")
-                    payload = evidence['payload']
-                    details.append(f"- Content: {json.dumps(payload, indent=2)}")
-                details.append("")
-            
-            elif vuln_type == 'SQLi':
-                details.append("\nSQL Injection Analysis:")
-                details.append("- Query Structure: " + str(self.analyze_sql_pattern(str(evidence.get('code', '')))))
-                details.append("- Injection Point: " + str(self.identify_injection_point(str(evidence.get('payload', '')))))
-                if 'request' in evidence:
-                    details.append("\nRequest Details:")
-                    req = evidence['request']
-                    details.append(f"- Method: {req.get('method', 'Not specified')}")
-                    details.append(f"- URL: {req.get('url', 'Not specified')}")
-                    details.append(f"- Parameters: {req.get('params', 'Not specified')}")
-                if 'response' in evidence:
-                    details.append("\nResponse Details:")
-                    resp = evidence['response']
-                    details.append(f"- Status Code: {resp.get('status_code', 'Not specified')}")
-                    details.append(f"- Body: {resp.get('body', 'Not specified')}")
-                details.append("")
-            
-            elif vuln_type == 'BOLA':
-                details.append("\nAccess Control Analysis:")
-                details.append("- Authorization Check: " + str(self.analyze_auth_check(str(evidence.get('code', '')))))
-                details.append("- Access Pattern: " + str(self.analyze_access_pattern(str(evidence.get('payload', '')))))
-                if 'request' in evidence:
-                    details.append("\nRequest Details:")
-                    req = evidence['request']
-                    details.append(f"- Method: {req.get('method', 'Not specified')}")
-                    details.append(f"- URL: {req.get('url', 'Not specified')}")
-                    details.append(f"- Headers: {req.get('headers', 'Not specified')}")
-                if 'response' in evidence:
-                    details.append("\nResponse Details:")
-                    resp = evidence['response']
-                    details.append(f"- Status Code: {resp.get('status_code', 'Not specified')}")
-                    details.append(f"- Body: {resp.get('body', 'Not specified')}")
-                details.append("")
-            
-            elif vuln_type in ['Mass Assignment', 'MASS_ASSIGNMENT', 'MASS_ASSIGNMENT_PRIVILEGE_ESCALATION', 'PRIVILEGE_ESCALATION']:
-                details.append("\nMass Assignment/Privilege Escalation Analysis:")
-                details.append("- Vulnerability: Unfiltered parameter binding with privilege escalation potential")
-                details.append("- Impact: Unauthorized privilege escalation and role manipulation")
-                
-                # Initial state evidence
-                if 'initial_state' in evidence:
-                    details.append("\nInitial State:")
-                    init_state = evidence['initial_state']
-                    if 'request' in init_state:
-                        details.append("Request:")
-                        details.append(str(init_state['request']))
-                    if 'response' in init_state:
-                        details.append("\nResponse:")
-                        details.append(str(init_state['response']))
-                    if 'admin_count' in init_state:
-                        details.append(f"\nInitial Admin Count: {init_state['admin_count']}")
-                
-                # Exploitation evidence
-                if 'exploitation' in evidence:
-                    details.append("\nExploitation Attempt:")
-                    exploit = evidence['exploitation']
-                    if 'request' in exploit:
-                        details.append("Request:")
-                        details.append(str(exploit['request']))
-                    if 'response' in exploit:
-                        details.append("\nResponse:")
-                        details.append(str(exploit['response']))
-                    if 'payload' in exploit:
-                        details.append("\nPayload:")
-                        details.append(json.dumps(exploit['payload'], indent=2))
-                
-                # Verification evidence
-                if 'verification' in evidence:
-                    details.append("\nVerification:")
-                    verify = evidence['verification']
-                    if 'request' in verify:
-                        details.append("Request:")
-                        details.append(str(verify['request']))
-                    if 'response' in verify:
-                        details.append("\nResponse:")
-                        details.append(str(verify['response']))
-                    if 'new_admin_user' in verify:
-                        details.append("\nNew Admin User:")
-                        details.append(json.dumps(verify['new_admin_user'], indent=2))
-                
-                # Fall back to standard request/response if structured evidence not available
-                if not any(k in evidence for k in ['initial_state', 'exploitation', 'verification']):
-                    if 'request' in evidence:
-                        details.append("\nRequest Details:")
-                        details.append(str(evidence['request']))
-                    if 'response' in evidence:
-                        details.append("\nResponse Details:")
-                        details.append(str(evidence['response']))
-                details.append("")
-            
-            elif vuln_type == 'Data Exposure' or finding.get('type') == 'EXCESSIVE_DATA_EXPOSURE':
-                details.append(f"URL: {evidence.get('url', 'Not specified')}")
-                details.append("Request Headers: Not available")
-                details.append("Request Body: Not available")
-                
-                if 'exposed_data_types' in evidence:
-                    details.append("Exposed Data Types:")
-                    for data_type in evidence['exposed_data_types']:
-                        details.append(f"- {data_type}")
-                    details.append("")
-                
-                details.append("Response Headers: Not available")
-                if 'response_sample' in evidence:
-                    details.append("Response Body:")
-                    details.append(evidence['response_sample'])
-                details.append("")
-            
-            elif vuln_type == 'Rate Limit':
-                details.append("\nRate Limit Analysis:")
-                details.append("- Vulnerability: Missing or insufficient rate limiting")
-                details.append("- Impact: Potential for brute force or DoS attacks")
-                if 'request' in evidence:
-                    details.append("\nRequest Details:")
-                    req = evidence['request']
-                    details.append(f"- Method: {req.get('method', 'Not specified')}")
-                    details.append(f"- URL: {req.get('url', 'Not specified')}")
-                    details.append(f"- Rate: {req.get('rate', 'Not specified')} requests")
-                if 'response' in evidence:
-                    details.append("\nResponse Details:")
-                    resp = evidence['response']
-                    details.append(f"- Status Code: {resp.get('status_code', 'Not specified')}")
-                    details.append(f"- Headers: {resp.get('headers', 'Not specified')}")
-                details.append("")
-            
             # Add evidence details with proper formatting
             if evidence:
-                if 'code' in evidence:
-                    details.append("\nVulnerable Code:")
-                    details.append(str(evidence['code']))
-                if 'request' in evidence:
-                    details.append("\nRequest Details:")
-                    details.append(str(evidence['request']))
-                if 'response' in evidence:
-                    details.append("\nResponse Details:")
-                    details.append(str(evidence['response']))
-                if 'sample' in evidence:
-                    details.append("\nSample Data:")
-                    details.append(str(evidence['sample']))
+                details.append("\nEvidence Details:")
+                # Convert evidence to string and escape HTML characters
+                evidence_str = json.dumps(evidence, indent=2)
+                # Filter out correlation_id
+                evidence_lines = [line for line in evidence_str.split('\n') if 'correlation_id' not in line]
+                # Escape HTML characters to prevent rendering
+                escaped_evidence = '\n'.join(evidence_lines).replace('<', '&lt;').replace('>', '&gt;')
+                details.append(escaped_evidence)
                 details.append("\nAnalysis:")
                 details.append(str(self.analyze_response(evidence.get('response', evidence.get('sample', '')), vuln_type)))
             details.append("\n" + "-"*50 + "\n")
@@ -622,7 +567,61 @@ Technical Evidence:
             return "Non-JSON response structure"
 
     def generate_developer_insights(self, vuln_type: str, finding_data: dict) -> str:
-        """Generate comprehensive developer insights with root cause analysis and best practices."""
+        """Generate developer-focused insights for the Developer Insights tab using LLM when available."""
+        try:
+            from llm_analyzer import chat
+            
+            # Extract key information for LLM analysis
+            evidence = finding_data.get('evidence', {})
+            code_snippet = ''
+            if isinstance(evidence, dict):
+                if 'code' in evidence:
+                    code_snippet = evidence['code']
+                elif 'payload' in evidence:
+                    code_snippet = evidence['payload']
+                elif 'response_sample' in evidence:
+                    code_snippet = evidence['response_sample']
+            
+            endpoint = finding_data.get('endpoint', 'Not specified')
+            parameter = finding_data.get('parameter', 'Not specified')
+            attack_pattern = finding_data.get('attack_pattern', '')
+            
+            # Construct prompt for LLM
+            prompt = f"""Analyze this {vuln_type} vulnerability from a developer's perspective:
+
+Vulnerability Details:
+- Type: {vuln_type}
+- Endpoint: {endpoint}
+- Parameter: {parameter}
+- Attack Pattern: {attack_pattern}
+
+Code/Payload Sample:
+```
+{code_snippet}
+```
+
+Provide developer-focused insights including:
+1. Root cause analysis - what coding patterns led to this vulnerability
+2. Common developer mistakes that create this vulnerability
+3. Secure coding patterns to prevent this issue
+4. Specific code refactoring recommendations
+5. Testing strategies to verify the fix
+
+Format your response with clear sections and actionable advice."""
+
+            # Get enhanced developer insights from LLM
+            try:
+                response = chat('llama3.3', messages=[{"role": "user", "content": prompt}])
+                return response.message.content
+            except Exception:
+                # Fall back to template-based insights
+                pass
+                
+        except ImportError:
+            # LLM module not available, continue with template-based approach
+            pass
+            
+        # Template-based approach (fallback)
         evidence = finding_data.get('evidence', {})
         code_sample = evidence.get('code', 'No code sample available')
         
@@ -785,7 +784,7 @@ Technical Evidence:
             with open(input_file, 'r') as f:
                 findings = json.loads(f.read())
 
-            processed_findings, total_findings, critical_findings = self.process_findings(findings)
+            processed_findings, total_findings, critical_findings, executive_summary = self.process_findings(findings)
             
             # Generate charts
             severity_chart = self.generate_severity_chart(processed_findings)
@@ -793,8 +792,7 @@ Technical Evidence:
             # Prepare template data
             template_data = {
                 'generation_date': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-                'executive_summary': f"Security analysis identified {total_findings} vulnerabilities, "
-                                   f"including {critical_findings} critical findings that require immediate attention.",
+                'executive_summary': executive_summary,
                 'key_stats': [
                     f"Total Vulnerabilities: {total_findings}",
                     f"Critical Findings: {critical_findings}",

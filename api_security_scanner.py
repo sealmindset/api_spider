@@ -40,7 +40,9 @@ from RAGScripts.RAG_JWT import JWTScanner
 from RAGScripts.RAG_OpenRedirect import OpenRedirectScanner
 from RAGScripts.RAG_PathTraversal import PathTraversalScanner
 from RAGScripts.RAG_UserEnum import UserEnumScanner
+from RAGScripts.integrated_sqli_scanner import IntegratedSQLiScanner
 from RAGScripts.utils.auth_handler import AuthHandler
+from RAGScripts.RAG_APITestWorkflow import APITestWorkflowScanner
 
 def setup_logging(verbosity: int = 1) -> logging.Logger:
     logger = logging.getLogger('api_security_scanner')
@@ -181,6 +183,7 @@ class APISecurityScanner:
         # Initialize security checks after token is set
         self.security_checks = [
             SQLiScanner,
+            IntegratedSQLiScanner,
             UnauthorizedPasswordChangeScanner,
             BOLAScanner,
             MassAssignmentScanner,
@@ -198,7 +201,8 @@ class APISecurityScanner:
             JWTScanner,
             OpenRedirectScanner,
             PathTraversalScanner,
-            UserEnumScanner
+            UserEnumScanner,
+            APITestWorkflowScanner
         ]
         self.logger.info(f"Loaded {len(self.security_checks)} security scanners")
 
