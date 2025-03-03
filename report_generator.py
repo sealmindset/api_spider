@@ -231,14 +231,31 @@ class ReportGenerator:
                     severity = 'HIGH'
             total_findings += len(type_findings)
             
-            # Generate enhanced analysis content
-            analysis_content = self.generate_enhanced_analysis(vuln_type, finding_data)
-            
-            # Generate technical details focusing on highest severity findings
-            technical_details = self.generate_technical_details(vuln_type, finding_data, type_findings)
-            
-            # Generate developer insights focusing on root cause
-            developer_insights = self.generate_developer_insights(vuln_type, finding_data)
+            # Initialize LLM analyzer
+            try:
+                from llm_analyzer import LLMAnalyzer
+                llm = LLMAnalyzer()
+                
+                # Generate enhanced analysis content using LLM
+                analysis_prompt = f"Analyze this {vuln_type} security finding and provide a detailed technical analysis including impact and exploitation scenarios."
+                analysis_content = llm.analyze(analysis_prompt, context=finding_data)
+                
+                # Generate technical details using LLM
+                technical_prompt = f"Provide detailed technical analysis of this {vuln_type} vulnerability, focusing on attack vectors and evidence."
+                technical_details = llm.analyze(technical_prompt, context=finding_data)
+                
+                # Generate developer insights using LLM
+                developer_prompt = f"Analyze this {vuln_type} vulnerability from a developer's perspective. Include root cause analysis and secure coding recommendations."
+                developer_insights = llm.analyze(developer_prompt, context=finding_data)
+                
+                self.logger.info(f"Successfully generated LLM analysis for {vuln_type}")
+                
+            except Exception as e:
+                self.logger.error(f"Error using LLM analyzer: {str(e)}. Falling back to template-based analysis.")
+                # Fallback to template-based analysis
+                analysis_content = self.generate_enhanced_analysis(vuln_type, finding_data)
+                technical_details = self.generate_technical_details(vuln_type, finding_data, type_findings)
+                developer_insights = self.generate_developer_insights(vuln_type, finding_data)
             
             # Generate customized remediation steps using LLM
             try:
