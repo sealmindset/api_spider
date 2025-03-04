@@ -16,20 +16,24 @@ class NoCredentialsScanner(BaseScanner):
              context: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
         vulnerabilities = []
         
-        # List of sensitive endpoints that should require authentication
-        sensitive_endpoints = [
-            "/users/v1/_debug",
-            "/users/v1/me",
-            "/users/v1",
-            "/books/v1/_debug",
-            "/system/debug",
-            "/api/debug",
-            "/admin",
-            "/manage",
-            "/console",
-            "/dashboard",
-            "/settings"
-        ]
+        # Use paths from the context if available
+        sensitive_endpoints = []
+        
+        # If path is provided, use it as the primary endpoint to check
+        if path:
+            sensitive_endpoints.append(path)
+            
+        # Look for potential sensitive endpoints in the context if available
+        if context and 'paths' in context:
+            for api_path in context['paths']:
+                # Look for endpoints that might be sensitive
+                if any(keyword in api_path.lower() for keyword in ['debug', 'me', 'user', 'admin', 'profile', 'account', 'settings', 'dashboard', 'console', 'manage']):
+                    sensitive_endpoints.append(api_path)
+        
+        # If no endpoints found in context, log warning and return
+        if not sensitive_endpoints:
+            self.logger.warning("No paths found in context for testing")
+            return vulnerabilities
         
         # Test each sensitive endpoint without authentication
         for endpoint in sensitive_endpoints:

@@ -117,13 +117,43 @@ def generate_base_paths(parameters: List[str], common_values: List[str], max_dep
     """Generate base API paths"""
     paths = {'/'}
     
-    # Define core components
-    core_paths = {
-        '/': ['users', 'createdb', 'me'],
-        '/users': ['v1', '_debug', 'register', 'login'],
-        '/users/v1': ['_debug', 'register', 'login', '{username}', '{id}'],
-        '/me': ['profile', 'settings', 'email'],
-    }
+    # Define core components based on common API patterns
+    # These are only used if no OpenAPI spec is provided
+    core_paths = {}
+    parameterized_paths = {}
+    
+    # Check if we have paths from an OpenAPI spec
+    if isinstance(parameters, dict) and 'openapi_paths' in parameters and parameters['openapi_paths']:
+        # Use paths from the OpenAPI spec
+        for path in parameters['openapi_paths']:
+            # Add the complete path directly to ensure we test exactly what's in the spec
+            paths.add(path)
+            
+            # Also break down the path for structured exploration
+            path_parts = path.strip('/').split('/')
+            if len(path_parts) > 0:
+                base = '/' + path_parts[0]
+                if base not in core_paths:
+                    core_paths[base] = []
+                
+                if len(path_parts) > 1:
+                    core_paths[base].append(path_parts[1])
+                    
+                    # Handle path parameters
+                    if '{' in path:
+                        param_base = '/' + '/'.join(path_parts[:2])
+                        if param_base not in parameterized_paths:
+                            parameterized_paths[param_base] = []
+                        
+                        # Extract path parameters
+                        for part in path_parts[2:]:
+                            if '{' in part and '}' in part:
+                                parameterized_paths[param_base].append(part)
+    else:
+        # No OpenAPI spec provided, use empty path structures
+        # This ensures we don't use hardcoded paths that might interfere with proper scanning
+        core_paths = {'/': []}
+        parameterized_paths = {}
     
     def build_path_tree(base='/', depth=0):
         if depth >= max_depth:
@@ -140,10 +170,20 @@ def generate_base_paths(parameters: List[str], common_values: List[str], max_dep
             
             if depth + 1 < max_depth:
                 build_path_tree(new_path, depth + 1)
-                
-                if '{' in segment:
-                    for subresource in ['email', 'password']:
-                        paths.add(f"{new_path}/{subresource}")
+        
+        # Handle parameterized paths separately
+        param_segments = parameterized_paths.get(base, [])
+        for segment in param_segments:
+            new_path = f"{base.rstrip('/')}/{segment}"
+            paths.add(new_path)
+            
+            # Only add subresources if specifically needed
+            if depth + 1 < max_depth and '{' in segment:
+                # Limit subresources to common ones
+                for subresource in ['email', 'password']:
+                    subpath = f"{new_path}/{subresource}"
+                    # Don't automatically add these - they'll be tested only if base path exists
+                    paths.add(subpath)
     
     build_path_tree('/', 0)
     cleaned_paths = {re.sub('/+', '/', path) for path in paths}
@@ -168,7 +208,46 @@ def crawl(base_url: str, token=None, logger=None) -> List[Tuple[str, str, str, i
     logger.info(f"Testing {len(paths)} paths...")
     
     for path in paths:
-        url = urljoin(base_url, path)
+        # Skip paths with parameters if base endpoint doesn't exist
+        if '{' in path:
+            base_path = re.sub(r'\{[^}]+\}/.*', '', path)
+            base_url_test = urljoin(base_url, base_path)
+            try:
+                response = requests.get(base_url_test, headers=headers, timeout=10)
+                if response.status_code == 404:
+                    logger.debug(f"Skipping parameter testing for non-existent base path: {base_path}")
+                    continue
+            except requests.RequestException:
+                continue
+        
+        # Fix URL construction to prevent path duplication
+        # Parse the base_url to get its path component
+        from urllib.parse import urlparse
+        parsed_base_url = urlparse(base_url)
+        base_path = parsed_base_url.path.rstrip('/')
+        
+        # Check if the path is already in the base_url to avoid duplication
+        if path.lstrip('/') in base_url.rstrip('/').split('/'):
+            url = base_url
+        else:
+            # Remove any overlapping segments from the path
+            path_parts = path.lstrip('/').split('/')
+            base_path_parts = base_path.lstrip('/').split('/') if base_path else []
+            
+            # Find where path segments start to differ
+            overlap_index = 0
+            for i in range(min(len(base_path_parts), len(path_parts))):
+                if base_path_parts[i] != path_parts[i]:
+                    break
+                overlap_index = i + 1
+            
+            # Construct URL using only non-overlapping segments
+            if overlap_index > 0:
+                unique_path = '/'.join(path_parts[overlap_index:])
+                url = urljoin(base_url, unique_path)
+            else:
+                url = urljoin(base_url, path)
+        
         try:
             response = requests.get(url, headers=headers, timeout=10)
             

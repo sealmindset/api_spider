@@ -18,11 +18,15 @@ class RateLimitScanner(BaseScanner):
         logger = setup_scanner_logger("rate_limit")
         vulnerabilities = []
         
+        # Use path from input or context
+        if not path and (not context or 'paths' not in context):
+            logger.warning("No paths found in context for testing")
+            return vulnerabilities
+            
         # Test parameters
         request_count = 50
         interval = 0.1  # 100ms between requests
-        endpoint = "/books/v1"
-        test_url = f"{url}{endpoint}"
+        test_url = f"{url}{path}"  # Use provided path instead of hardcoded endpoint
         
         # Headers setup
         request_headers = headers or {}

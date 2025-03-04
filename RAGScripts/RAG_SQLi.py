@@ -7,6 +7,7 @@ import time
 import json
 import uuid
 from datetime import datetime
+from urllib.parse import urljoin
 
 class SQLiScanner(BaseScanner):
     def __init__(self):
@@ -79,10 +80,10 @@ class SQLiScanner(BaseScanner):
 
                     # Test in URL parameters
                     params = {'id': payload, 'search': payload}
-                    response = requests.request(method, f"{url}{path}", params=params, headers=headers, timeout=10)
+                    response = requests.request(method, url, params=params, headers=headers, timeout=10)
                     
                     # Test in URL path
-                    path_response = requests.request(method, f"{url}/users/v1/{payload}", headers=headers, timeout=10)
+                    path_response = requests.request(method, url, headers=headers, timeout=10)
                     
                     # Capture path test transaction
                     path_req, path_res = self.capture_transaction(
@@ -100,7 +101,9 @@ class SQLiScanner(BaseScanner):
                     
                     # Test in JSON body
                     json_data = {'query': payload, 'filter': payload}
-                    json_response = requests.request(method, f"{url}{path}", json=json_data, headers=headers, timeout=10)
+                    # Use urljoin for proper URL construction
+                    test_url = urljoin(url, path) if not url.endswith(path) else url
+                    json_response = requests.request(method, test_url, json=json_data, headers=headers, timeout=10)
                     
                     # Capture JSON request transaction
                     json_req, json_res = self.capture_transaction(
@@ -119,7 +122,7 @@ class SQLiScanner(BaseScanner):
                             finding = {
                                 'type': 'SQL_INJECTION',
                                 'severity': 'HIGH',
-                                'endpoint': f"{url}{path}",
+                                'endpoint': urljoin(url, path) if not url.endswith(path) else url,
                                 'parameter': test_type,
                                 'attack_pattern': payload,
                                 'detail': f'SQL Injection vulnerability found using {attack_type}',
@@ -149,7 +152,7 @@ class SQLiScanner(BaseScanner):
                                     finding = {
                                         'type': 'SQL_INJECTION',
                                         'severity': 'HIGH',
-                                        'endpoint': f"{url}{path}",
+                                        'endpoint': urljoin(url, path) if not url.endswith(path) else url,
                                         'parameter': test_type,
                                         'attack_pattern': payload,
                                         'detail': 'Potential Boolean-based SQL Injection detected',

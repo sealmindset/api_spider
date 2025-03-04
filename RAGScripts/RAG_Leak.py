@@ -20,15 +20,24 @@ class DataExposureScanner(BaseScanner):
     def scan(self, url: str, method: str, path: str, response: requests.Response, token: Optional[str] = None, headers: Optional[Dict] = None, tokens: Optional[Dict[str, List[Dict[str, Any]]]] = None, context: Optional[Dict[str, Any]] = None) -> List[Dict]:
         self.base_url = url
         
-        # List of endpoints to check for data exposure
-        endpoints = [
-            "/users/v1/_debug",
-            "/users/v1/me",
-            "/users/v1",
-            "/books/v1/_debug",
-            "/system/debug",
-            "/api/debug"
-        ]
+        # Use paths from the API specification if available
+        endpoints = []
+        
+        # If path is provided, use it as the primary endpoint to check
+        if path:
+            endpoints.append(path)
+            
+        # Look for potential data exposure endpoints in the context if available
+        if context and 'paths' in context:
+            for api_path in context['paths']:
+                # Look for endpoints that might expose sensitive data
+                if any(keyword in api_path.lower() for keyword in ['debug', 'me', 'user', 'admin', 'profile', 'account']):
+                    endpoints.append(api_path)
+        
+        # If no endpoints found in context, log warning and return
+        if not endpoints:
+            self.logger.warning("No paths found in context for testing")
+            return self.findings
         
         # Patterns that might indicate sensitive data
         sensitive_patterns = {

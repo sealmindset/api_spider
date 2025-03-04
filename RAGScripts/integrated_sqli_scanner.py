@@ -79,20 +79,35 @@ class IntegratedSQLiScanner(BaseScanner):
             "'; DROP TABLE users--" # Destructive SQLi
         ]
         
-        # Test endpoints that are likely to be vulnerable
-        test_paths = [
-            "/users/v1/",
-            "/api/users/",
-            "/api/v1/users/",
-            "/api/data/",
-            "/api/records/"
-        ]
+        # Use the provided path from the API specification
+        test_paths = [path] if path else []
+        
+        # If no path provided, try to get paths from context
+        if not test_paths and context and 'paths' in context:
+            for api_path in context['paths']:
+                # Look for endpoints that might be vulnerable to SQL injection
+                if any(keyword in api_path.lower() for keyword in ['user', 'data', 'record', 'search', 'query', 'id']):
+                    test_paths.append(api_path)
+                    
+        # If still no paths, use some common patterns as fallback
+        if not test_paths:
+            test_paths = [
+                "/users/v1/",
+                "/api/users/",
+                "/api/v1/users/",
+                "/api/data/",
+                "/api/records/"
+            ]
+            self.logger.info("No paths found in context, using default endpoints for testing")
         
         self.logger.info(f"Starting integrated SQL injection tests for URL path parameters")
         
-        # First, test the exact case mentioned in sql_injection.py
-        specific_test_url = f"{url}/users/v1/name1'"
-        self.logger.info(f"Testing specific URL: {specific_test_url}")
+        # First, test the exact case mentioned in the path parameter
+        # Only test if we have a valid path
+        if path:
+            specific_test_url = urljoin(url, f"{path}name1'")
+            self.logger.info(f"Testing specific URL: {specific_test_url}")
+        
         
         try:
             specific_resp = requests.get(
@@ -203,38 +218,24 @@ class IntegratedSQLiScanner(BaseScanner):
                             matched_patterns.append(error)
                     
                     if is_vulnerable:
+                        finding_id = str(uuid.uuid4())[:3]
+                        timestamp = datetime.utcnow().isoformat()
                         vulnerabilities.append({
-                            "type": "SQL_INJECTION",
+                            "id": finding_id,
+                            "type": "SQLi",
                             "severity": "HIGH",
                             "endpoint": test_url,
                             "parameter": "path",
                             "attack_pattern": payload,
-                            "detail": f"SQL Injection vulnerability found in URL path parameter at {base_path}",
                             "evidence": {
-                                "url": test_url,
-                                "method": "GET",
-                                "status_code": test_resp.status_code,
-                                "headers": dict(test_resp.headers),
-                                "response_preview": test_resp.text[:1000],
-                                "response_full": test_resp.text,
-                                "matched_patterns": matched_patterns,
-                                "request": test_req,
-                                "response": test_res,
+                                "code": "SELECT * FROM users WHERE username = '${username}'",
                                 "payload": payload,
-                                "correlation_id": correlation_id,
-                                "code": "SELECT * FROM users WHERE username = '${username}'"
+                                "response_sample": test_resp.text[:500],
+                                "correlation_id": correlation_id
                             },
-                            "remediation": {
-                                "description": "URL path parameters are vulnerable to SQL injection",
-                                "impact": "Attackers can extract sensitive data or modify database content",
-                                "steps": [
-                                    "Use parameterized queries or prepared statements",
-                                    "Implement proper input validation for URL path parameters",
-                                    "Apply proper escaping for user inputs",
-                                    "Use an ORM with proper parameter binding",
-                                    "Implement least privilege database access"
-                                ]
-                            }
+                            "detail": f"SQL Injection vulnerability found in URL path parameter at {base_path}",
+                            "timestamp": timestamp,
+                            "correlation_id": correlation_id
                         })
                         self.logger.warning(f"Found SQL_INJECTION vulnerability at {test_url}")
                         

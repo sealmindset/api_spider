@@ -83,28 +83,26 @@ class EnhancedSQLiScanner(BaseScanner):
             "'; DROP TABLE users--" # Destructive SQLi
         ]
         
-        # Test endpoints that are likely to be vulnerable
-        test_paths = [
-            "/users/v1/",
-            "/api/users/",
-            "/api/v1/users/",
-            "/api/data/",
-            "/api/records/"
-        ]
+        # Use the provided path from the API specification
+        test_paths = [path] if path else []
         
         self.logger.info(f"Starting enhanced SQL injection tests for URL path parameters")
         
-        # First, test the exact case mentioned by the user
-        specific_test_url = f"{url}/users/v1/name1'"
-        self.logger.info(f"Testing specific URL: {specific_test_url}")
+        # First, test the exact case mentioned in the path parameter
+        # Only test if we have a valid path
+        if path:
+            specific_test_url = urljoin(url, f"{path}name1'")
+            self.logger.info(f"Testing specific URL: {specific_test_url}")
         
         try:
-            specific_resp = requests.get(
-                specific_test_url,
-                headers=headers,
-                timeout=5,
-                allow_redirects=False
-            )
+            # Only proceed if we have a valid path
+            if path:
+                specific_resp = requests.get(
+                    specific_test_url,
+                    headers=headers,
+                    timeout=5,
+                    allow_redirects=False
+                )
             
             # Capture evidence
             specific_req, specific_res = self.capture_transaction(

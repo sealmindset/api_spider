@@ -91,7 +91,25 @@ class ScannerOrchestrator:
         all_findings = []
         
         for endpoint in endpoints:
-            url = base_url.rstrip('/') + '/' + endpoint['path'].lstrip('/')
+            # Check if the base_url already contains the server path from the spec
+            # This prevents combining paths from different API specifications
+            server_path = None
+            if 'server_path' in endpoint:
+                server_path = endpoint.get('server_path')
+            
+            # If we have a server path defined in the endpoint, use it
+            if server_path:
+                # Use the server path from the spec instead of combining with base_url
+                url = server_path.rstrip('/') + '/' + endpoint['path'].lstrip('/')
+            # Ensure we don't append paths to an already complete URL
+            elif base_url.endswith(endpoint['path']):
+                url = base_url
+            else:
+                # Only append the path if it's not already part of the base URL
+                # Use simple URL joining to avoid incorrect path combinations
+                from urllib.parse import urljoin
+                url = urljoin(base_url, endpoint['path'].lstrip('/'))
+            
             method = endpoint.get('method', 'GET')
             
             try:

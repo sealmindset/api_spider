@@ -1,0 +1,26 @@
+# Base Paths
+/users/v1/login
+/users/v1/register
+/users/v1/_debug
+/users/v1/{username}
+/users/v1/{id}
+/auth/sign-in
+/auth/sign-up
+/me/profile
+/me/settings
+
+# Common Parameters
+username
+password
+email
+id
+token
+
+# Common Values
+admin
+user1
+test
+root
+1
+2
+3

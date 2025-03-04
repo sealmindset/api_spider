@@ -65,16 +65,41 @@ def setup_logging(verbosity: int = 1) -> logging.Logger:
     return logger
 
 class CredentialHarvester:
-    def __init__(self, base_url: str, logger: logging.Logger):
+    def __init__(self, base_url: str, logger: logging.Logger, spec=None):
         self.base_url = base_url
         self.logger = logger
         self.credentials = []
         self.admin_token = None
+        self.spec = spec
 
     def harvest_credentials(self) -> List[Dict]:
         """Harvest credentials from debug endpoint"""
+        # Find debug endpoints from the spec
+        debug_endpoints = []
+        login_endpoints = []
+        
+        if self.spec:
+            paths = self.spec.get('paths', {})
+            # Look for debug and login endpoints in the spec
+            for path in paths:
+                if '_debug' in path.lower() or 'debug' in path.lower():
+                    debug_endpoints.append(path)
+                if 'login' in path.lower() or 'auth' in path.lower():
+                    login_endpoints.append(path)
+            
+            if not debug_endpoints:
+                self.logger.info("No debug endpoints found in API specification, skipping credential harvest")
+                return None
+            
+            self.logger.info(f"Found {len(debug_endpoints)} potential debug endpoints")
+            login_endpoint = login_endpoints[0] if login_endpoints else None
+        
         try:
-            response = requests.get(f"{self.base_url}/users/v1/_debug")
+            debug_endpoint = debug_endpoints[0] if debug_endpoints else None
+            if not debug_endpoint:
+                return None
+                
+            response = requests.get(f"{self.base_url}{debug_endpoint}")
             if response.status_code == 200:
                 users = response.json().get('users', [])
                 self.credentials = users
@@ -82,15 +107,15 @@ class CredentialHarvester:
                 return {
                     "type": "CREDENTIAL_EXPOSURE",
                     "severity": "CRITICAL",
-                    "endpoint": f"{self.base_url}/users/v1/_debug",
-                    "parameter": null,
+                    "endpoint": f"{self.base_url}{debug_endpoint}",
+                    "parameter": None,
                     "attack_pattern": "Direct access to debug endpoint",
                     "detail": "Exposed credentials through debug endpoint",
                     "evidence": {
-                        "code": "@app.route('/users/v1/_debug')\ndef debug_endpoint():\n    users = User.query.all()\n    return jsonify({'users': [u.to_dict() for u in users]})",
-                        "payload": "GET /users/v1/_debug",
+                        "code": "# Using discovered debug endpoint from the spec",
+                        "payload": f"GET {debug_endpoint}",
                         "response_sample": json.dumps({"users": [users[0] if users else {}]})[:200],
-                        "url": f"{self.base_url}/users/v1/_debug",
+                        "url": f"{self.base_url}{debug_endpoint}",
                         "user_count": len(users),
                         "sample": users[0] if users else None
                     }
@@ -104,6 +129,22 @@ class CredentialHarvester:
         if not self.credentials:
             return None
 
+        # Find login endpoints from the spec
+        login_endpoints = []
+        if self.spec:
+            paths = self.spec.get('paths', {})
+            for path in paths:
+                if 'login' in path.lower() or 'auth' in path.lower():
+                    login_endpoints.append(path)
+        
+        # Use login endpoint from the spec only
+        if not login_endpoints:
+            self.logger.info("No login endpoints found in API specification, skipping token generation")
+            return None
+            
+        login_endpoint = login_endpoints[0]
+        self.logger.info(f"Using login endpoint: {login_endpoint}")
+
         # Try to find admin users first
         admin_users = [user for user in self.credentials if user.get('admin', False)]
         test_users = admin_users if admin_users else self.credentials
@@ -111,7 +152,7 @@ class CredentialHarvester:
         for user in test_users:
             try:
                 response = requests.post(
-                    f"{self.base_url}/users/v1/login",
+                    f"{self.base_url}{login_endpoint}",
                     json={
                         "username": user['username'],
                         "password": user['password']
@@ -165,7 +206,7 @@ class APISecurityScanner:
         self.headers.update(self.auth_handler.generate_auth_headers(security_schemes, token))
         
         # Initialize credential harvester and try to get admin token first
-        self.harvester = CredentialHarvester(target_url, self.logger)
+        self.harvester = CredentialHarvester(target_url, self.logger, self.spec)
         
         if not token:
             finding = self.harvester.harvest_credentials()
@@ -212,7 +253,61 @@ class APISecurityScanner:
         from RAGScripts.utils.finding_formatter import FindingFormatter
         formatter = FindingFormatter()
         try:
-            endpoint_url = urljoin(self.target_url, path)
+            # Check if we have server information in the spec
+            server_url = self.spec.get('servers', [{}])[0].get('url', '') if self.spec.get('servers') else ''
+            
+            # Use the server URL from the spec if available, otherwise use target_url
+            base_url = server_url if server_url else self.target_url
+            
+            # Normalize base URL by removing trailing slashes
+            base_url = base_url.rstrip('/')
+            
+            # Parse the base_url to get its components
+            from urllib.parse import urlparse, urljoin
+            parsed_base = urlparse(base_url)
+            base_path = parsed_base.path.rstrip('/')
+            
+            # Normalize the endpoint path
+            normalized_path = path.lstrip('/')
+            
+            # Fix URL construction to prevent path duplication
+            # First check if the path is already in the base URL
+            if base_url.endswith('/' + normalized_path):
+                # Path is already fully included in the base URL
+                endpoint_url = base_url
+            else:
+                # Check if the path contains segments that are already in the base path
+                base_segments = base_path.lstrip('/').split('/') if base_path else []
+                path_segments = normalized_path.split('/')
+                
+                # Find where path segments start to differ from base segments
+                overlap = False
+                for i in range(min(len(base_segments), len(path_segments))):
+                    if i < len(base_segments) and i < len(path_segments) and base_segments[i] == path_segments[i]:
+                        overlap = True
+                    else:
+                        break
+                
+                if overlap:
+                    # If there's overlap, only use the non-overlapping part of the path
+                    # Find the index where paths start to differ
+                    diff_index = 0
+                    for i in range(min(len(base_segments), len(path_segments))):
+                        if base_segments[i] == path_segments[i]:
+                            diff_index = i + 1
+                        else:
+                            break
+                    
+                    # Use only the unique part of the path
+                    if diff_index > 0 and diff_index < len(path_segments):
+                        unique_path = '/'.join(path_segments[diff_index:])
+                        endpoint_url = urljoin(base_url + '/', unique_path)
+                    else:
+                        # If the entire path is already in the base URL or there's no overlap
+                        endpoint_url = urljoin(base_url + '/', normalized_path)
+                else:
+                    # No overlap, safe to join directly
+                    endpoint_url = urljoin(base_url + '/', normalized_path)
 
             for method, details in methods.items():
                 self.logger.info(f"Scanning endpoint: {method} {endpoint_url}")
@@ -307,7 +402,19 @@ class APISecurityScanner:
         """Load and parse OpenAPI specification file"""
         try:
             with open(self.spec_file, 'r') as f:
-                return yaml.safe_load(f)
+                spec = yaml.safe_load(f)
+                
+                # Extract server URL from the spec if available
+                if 'servers' in spec and spec['servers']:
+                    # Use the first server URL as base URL if it matches our target
+                    for server in spec['servers']:
+                        server_url = server.get('url', '')
+                        if server_url and (server_url in self.target_url or self.target_url in server_url):
+                            self.target_url = server_url
+                            self.logger.info(f"Using server URL from spec: {server_url}")
+                            break
+                
+                return spec
         except FileNotFoundError:
             self.logger.error(f"Specification file not found: {self.spec_file}")
             raise

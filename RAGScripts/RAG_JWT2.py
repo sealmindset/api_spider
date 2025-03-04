@@ -6,6 +6,7 @@ import requests
 import jwt
 import uuid
 from datetime import datetime
+from urllib.parse import urljoin
 from .base_scanner import BaseScanner
 from .utils.logger import setup_scanner_logger
 
@@ -65,8 +66,11 @@ class JWT2Scanner(BaseScanner):
                     
                     # Test the forged token
                     test_headers = {"Authorization": f"Bearer {none_token}"}
+                    
+                    # Use urljoin to properly construct the URL
+                    test_url = urljoin(url, path)
                     test_resp = requests.get(
-                        f"{url}{path}",
+                        test_url,
                         headers=test_headers,
                         timeout=5
                     )
