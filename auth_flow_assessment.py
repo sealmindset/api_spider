@@ -92,21 +92,29 @@ def access_user_profile_endpoints(scanner: AuthFlowScanner, token_info: Dict, lo
         "results": results
     }
 
-def run_assessment(base_url: str, swagger_file: str, output_file: str, verbosity: int = 1) -> Dict:
+def run_assessment(base_url: str, swagger_file: str, output_file: str, verbosity: int = 1, additional_swagger_files: List[str] = None) -> Dict:
     """Run the API security assessment and return the results"""
     logger = setup_logging(verbosity)
     
     logger.info(f"Starting API Security Assessment on {base_url}")
-    logger.info(f"Using Swagger file: {swagger_file}")
+    logger.info(f"Using primary Swagger file: {swagger_file}")
     
-    # Ensure the swagger file exists
+    # Ensure the primary swagger file exists
     if not os.path.exists(swagger_file):
-        logger.error(f"Swagger file not found: {swagger_file}")
+        logger.error(f"Primary Swagger file not found: {swagger_file}")
         sys.exit(1)
     
+    # Check additional swagger files if provided
+    if additional_swagger_files:
+        for additional_file in additional_swagger_files:
+            if not os.path.exists(additional_file):
+                logger.error(f"Additional Swagger file not found: {additional_file}")
+                sys.exit(1)
+            logger.info(f"Using additional Swagger file: {additional_file}")
+    
     try:
-        # Initialize the scanner
-        scanner = AuthFlowScanner(base_url, swagger_file, logger)
+        # Initialize the scanner with the primary swagger file and additional swagger files
+        scanner = AuthFlowScanner(base_url, swagger_file, logger, additional_swagger_files)
         
         # Run the assessment
         assessment_report = scanner.run_assessment()
@@ -159,7 +167,9 @@ def main():
     parser.add_argument('--url', default='http://localhost:3000/api/v1/mobile', 
                         help='Base URL of the API to scan')
     parser.add_argument('--swagger', default='swagger/snorefox.yml', 
-                        help='Path to Swagger/OpenAPI specification file')
+                        help='Path to primary Swagger/OpenAPI specification file')
+    parser.add_argument('--additional-swagger', nargs='+', 
+                        help='Additional Swagger/OpenAPI specification files (e.g., swagger/openapi3.yml)')
     parser.add_argument('--output', default='auth_flow_assessment.json', 
                         help='Output file for assessment report')
     parser.add_argument('-v', '--verbose', action='count', default=1,
@@ -168,7 +178,7 @@ def main():
     args = parser.parse_args()
     
     try:
-        run_assessment(args.url, args.swagger, args.output, args.verbose)
+        run_assessment(args.url, args.swagger, args.output, args.verbose, args.additional_swagger)
     except Exception as e:
         print(f"Error: {str(e)}")
         sys.exit(1)

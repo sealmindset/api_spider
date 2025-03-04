@@ -28,32 +28,35 @@ def setup_scanner_logger(name: str) -> logging.Logger:
 class AuthFlowScanner:
     """Scanner for testing authentication flow, account creation, and rate limiting"""
     
-    def __init__(self, base_url: str, swagger_file: str, logger: Optional[logging.Logger] = None):
+    def __init__(self, base_url: str, swagger_file: str, logger: Optional[logging.Logger] = None, additional_swagger_files: Optional[List[str]] = None):
         # Ensure logs directory exists
         os.makedirs('logs', exist_ok=True)
         self.base_url = base_url.rstrip('/')
         self.swagger_file = swagger_file
+        self.additional_swagger_files = additional_swagger_files or []
         self.logger = logger or setup_scanner_logger("auth_flow_scanner")
-        self.swagger_spec = self._load_swagger()
-        self.endpoints = self._extract_endpoints()
+        self.swagger_spec = self._load_swagger(self.swagger_file)
+        self.additional_specs = [self._load_swagger(file) for file in self.additional_swagger_files]
+        self.endpoints = self._extract_endpoints(self.swagger_spec)
+        self.additional_endpoints = [self._extract_endpoints(spec) for spec in self.additional_specs]
         self.findings = []
         self.accounts = []
         self.tokens = {}
         self.rate_limit_findings = []
         
-    def _load_swagger(self) -> Dict:
+    def _load_swagger(self, swagger_file: str) -> Dict:
         """Load the Swagger/OpenAPI specification file"""
         try:
-            with open(self.swagger_file, 'r') as f:
+            with open(swagger_file, 'r') as f:
                 return yaml.safe_load(f)
         except Exception as e:
-            self.logger.error(f"Error loading Swagger file: {str(e)}")
+            self.logger.error(f"Error loading Swagger file {swagger_file}: {str(e)}")
             raise
     
-    def _extract_endpoints(self) -> Dict:
+    def _extract_endpoints(self, swagger_spec: Dict) -> Dict:
         """Extract endpoints from the Swagger specification"""
         endpoints = {}
-        paths = self.swagger_spec.get('paths', {})
+        paths = swagger_spec.get('paths', {})
         
         for path, methods in paths.items():
             endpoints[path] = {}
@@ -70,13 +73,14 @@ class AuthFlowScanner:
         
         return endpoints
     
-    def _get_schema_ref(self, ref: str) -> Dict:
+    def _get_schema_ref(self, ref: str, swagger_spec: Optional[Dict] = None) -> Dict:
         """Resolve a schema reference in the Swagger spec"""
         if not ref.startswith('#/components/schemas/'):
             return {}
         
+        spec = swagger_spec or self.swagger_spec
         schema_name = ref.replace('#/components/schemas/', '')
-        return self.swagger_spec.get('components', {}).get('schemas', {}).get(schema_name, {})
+        return spec.get('components', {}).get('schemas', {}).get(schema_name, {})
     
     def _generate_random_email(self, prefix: str = "user") -> str:
         """Generate a random email address"""
@@ -84,10 +88,44 @@ class AuthFlowScanner:
         return f"{prefix}_{random_str}@example.com"
     
     def _find_endpoint_by_tag_and_summary(self, tag: str, summary_keywords: List[str]) -> Optional[Dict]:
-        """Find an endpoint by tag and summary keywords"""
-        for path, methods in self.endpoints.items():
+        """Find an endpoint by tag and summary keywords in primary and additional Swagger files"""
+        # First check for registration endpoint directly in paths
+        if 'register' in summary_keywords:
+            for path, methods in self.swagger_spec.get('paths', {}).items():
+                if '/register' in path.lower():
+                    for method, details in methods.items():
+                        if method.lower() == 'post':
+                            return {
+                                'path': path,
+                                'method': method,
+                                'details': details,
+                                'swagger_file': self.swagger_file,
+                                'swagger_spec': self.swagger_spec
+                            }
+        
+        # Then check the primary Swagger file
+        endpoint = self._find_endpoint_in_spec(self.endpoints, tag, summary_keywords)
+        if endpoint:
+            endpoint['swagger_file'] = self.swagger_file
+            endpoint['swagger_spec'] = self.swagger_spec
+            return endpoint
+            
+        # Then check additional Swagger files
+        for i, endpoints in enumerate(self.additional_endpoints):
+            endpoint = self._find_endpoint_in_spec(endpoints, tag, summary_keywords)
+            if endpoint:
+                endpoint['swagger_file'] = self.additional_swagger_files[i]
+                endpoint['swagger_spec'] = self.additional_specs[i]
+                return endpoint
+                
+        return None
+        
+    def _find_endpoint_in_spec(self, endpoints: Dict, tag: str, summary_keywords: List[str]) -> Optional[Dict]:
+        """Find an endpoint by tag and summary keywords in a specific endpoints dictionary"""
+        for path, methods in endpoints.items():
             for method, details in methods.items():
-                if tag in details['tags']:
+                # Check for both 'users' and 'Authentication' tags
+                if tag in details['tags'] or 'users' in details['tags']:
                     summary = details['summary'].lower()
                     description = details.get('description', '').lower()
                     path_lower = path.lower()
@@ -102,13 +140,14 @@ class AuthFlowScanner:
                     
                     # Additional check for registration variations
                     if 'register' in summary_keywords:
-                        variations = ['register', 'signup', 'sign up', 'sign-up', 'create account']
-                        path_variations = ['/users/v1/register', '/register', '/signup', '/sign-up']
+                        variations = ['register', 'signup', 'sign up', 'sign-up', 'create account', 'new user']
                         summary_match = summary_match or any(var in normalized_summary for var in variations)
                         description_match = description_match or any(var in normalized_description for var in variations)
-                        path_match = any(var in path_lower for var in path_variations)
                         
-                        if path_match:
+                        # Check if registration-related terms appear in the path
+                        path_match = any(var in path_lower for var in ['/register', '/signup', '/sign-up', '/users/v1/register'])
+                        
+                        if path_match or summary_match or description_match:
                             return {
                                 'path': path,
                                 'method': method,
@@ -188,24 +227,37 @@ class AuthFlowScanner:
     
     def register_initial_account(self) -> Dict:
         """Register an initial account for testing"""
-        # Find the registration endpoint
+        # Find the registration endpoint - try both Authentication and users tags
         register_endpoint = self._find_endpoint_by_tag_and_summary("Authentication", ["register"])
         
         if not register_endpoint:
-            self.logger.error("Registration endpoint not found in Swagger spec")
+            # Try with 'users' tag if 'Authentication' tag didn't work
+            register_endpoint = self._find_endpoint_by_tag_and_summary("users", ["register"])
+        
+        if not register_endpoint:
+            self.logger.error("Registration endpoint not found in any Swagger spec")
             return {}
         
         path = register_endpoint['path']
         method = register_endpoint['method']
         url = urljoin(self.base_url, path)
+        swagger_spec = register_endpoint.get('swagger_spec', self.swagger_spec)
+        
+        # Log which Swagger file the endpoint was found in
+        swagger_file = register_endpoint.get('swagger_file', self.swagger_file)
+        self.logger.info(f"Using registration endpoint from {swagger_file}: {method} {path}")
         
         # Get the request schema
         request_schema = {}
         if 'request_body' in register_endpoint['details']:
             content = register_endpoint['details']['request_body'].get('content', {})
-            schema_ref = content.get('application/json', {}).get('schema', {}).get('$ref')
+            schema = content.get('application/json', {}).get('schema', {})
+            schema_ref = schema.get('$ref')
             if schema_ref:
-                request_schema = self._get_schema_ref(schema_ref)
+                request_schema = self._get_schema_ref(schema_ref, swagger_spec)
+            else:
+                # Handle inline schema (no $ref)
+                request_schema = schema
         
         # Create the registration payload
         email = self._generate_random_email("user_initial")
@@ -479,7 +531,7 @@ class AuthFlowScanner:
                         "evidence": {
                             "email": email,
                             "tokens_received": ["accessToken", "idToken", "refreshToken"] if id_token else ["accessToken", "refreshToken"],
-                            "response": {k: "[REDACTED]" for k in response_data.keys()}
+                            "response": response_data
                         }
                     }
                     self.findings.append(auth_finding)
@@ -566,7 +618,7 @@ class AuthFlowScanner:
                         "evidence": {
                             "email": email,
                             "tokens_received": ["accessToken", "idToken"] if new_id_token else ["accessToken"],
-                            "response": {k: "[REDACTED]" for k in response_data.keys()}
+                            "response": response_data
                         }
                     }
                     self.findings.append(refresh_finding)
@@ -744,7 +796,7 @@ class AuthFlowScanner:
             token_info = self.authenticate_account(initial_account)
             assessment_report["authentication"] = {
                 "success": bool(token_info),
-                "tokens": {k: "[REDACTED]" for k in token_info.keys()} if token_info else {}
+                "tokens": token_info if token_info else {}
             }
         else:
             self.logger.error("Cannot authenticate - no initial account created")
@@ -774,7 +826,7 @@ class AuthFlowScanner:
             refreshed_token_info = self.refresh_token(token_info)
             assessment_report["token_refresh"] = {
                 "success": bool(refreshed_token_info),
-                "tokens": {k: "[REDACTED]" for k in refreshed_token_info.keys()} if refreshed_token_info else {}
+                "tokens": refreshed_token_info if refreshed_token_info else {}
             }
         else:
             self.logger.error("Cannot refresh token - authentication failed")
